@@ -6,13 +6,8 @@ import java.util.Map;
 
 public class MainGUI extends JFrame {
 
-<<<<<<< HEAD
     // --- 系統大腦與虛擬資料庫 ---
     private SqliteDatabase db = new SqliteDatabase();
-=======
-    // --- 選課系統與虛擬資料庫 ---
-    private FakeDatabase db = new FakeDatabase();
->>>>>>> upstream/main
     private RegistrationSystem system = new RegistrationSystem(db);
 
     // --- 畫面切換工具 (卡片佈局) ---
