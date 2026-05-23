@@ -5,7 +5,7 @@ import java.util.Scanner;
 public class ConsoleTester {
     public static void main(String[] args) {
         // 1. 系統初始化
-        FakeDatabase db = new FakeDatabase();
+        SqliteDatabase db = new SqliteDatabase();
         RegistrationSystem system = new RegistrationSystem(db);
 
         // 2. 塞入預設假資料
@@ -148,7 +148,7 @@ public class ConsoleTester {
     }
 
     // =================學生介面=================
-    private static void runStudentMenu(Scanner scanner, RegistrationSystem system, Student student, FakeDatabase db) {
+    private static void runStudentMenu(Scanner scanner, RegistrationSystem system, Student student, SqliteDatabase db) {
         while (true) {
             System.out.println("\n=== 學生功能選單 ===");
             System.out.println("1. 瀏覽全校課程與選課");

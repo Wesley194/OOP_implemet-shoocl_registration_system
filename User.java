@@ -12,7 +12,7 @@ public abstract class User {
     public boolean verifyPassword(String inputPassword) {
         return this.password.equals(inputPassword);
     }
-
+    public String getPassword() { return password; }
     public String getUid() { return uid; }
     public String getName() { return name; }
     public abstract String getRole();
