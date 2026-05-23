@@ -14,6 +14,10 @@ public class TimeSlot {
         return this.startPeriod <= other.endPeriod && this.endPeriod >= other.startPeriod;
     }
 
+    public int getDayOfWeek() { return dayOfWeek; }
+    public int getStartPeriod() { return startPeriod; }
+    public int getEndPeriod() { return endPeriod; }
+
     @Override
     public String toString() {
         return "星期" + dayOfWeek + " (" + startPeriod + "~" + endPeriod + "節)";

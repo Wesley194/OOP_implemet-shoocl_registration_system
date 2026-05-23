@@ -15,20 +15,21 @@ public class RegistrationSystem {
     // 對外開放的 API 接口 (前端 Controller 只會跟這個類別溝通)
     // ----------------------------------------------------
 
-    public void createCourse(Teacher teacher, String courseId, String courseName, int credits, int maxCapacity, TimeSlot time) {
-        // 委託給 CourseManager 處理
+    // 加上 throws Exception
+    public void createCourse(Teacher teacher, String courseId, String courseName, int credits, int maxCapacity, TimeSlot time) throws Exception {
         courseManager.createCourse(teacher, courseId, courseName, credits, maxCapacity, time);
     }
 
+    // 加上 throws Exception
+    public boolean gradeStudent(Teacher teacher, Student student, Course course, double score) throws Exception {
+        return gradeManager.gradeStudent(teacher, student, course, score);
+    }
     public void enroll(Student student, Course course) throws CourseFullException, TimeConflictException, Exception {
         // 委託給 EnrollmentManager 處理
         enrollmentManager.enroll(student, course);
     }
 
-    public boolean gradeStudent(Teacher teacher, Student student, Course course, double score) {
-        // 委託給 GradeManager 處理
-        return gradeManager.gradeStudent(teacher, student, course, score);
-    }
+    
 
     public double calculateGPA(Student student) {
         // 委託給 GradeManager 處理

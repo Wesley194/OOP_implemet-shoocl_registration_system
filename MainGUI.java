@@ -41,8 +41,15 @@ public class MainGUI extends JFrame {
         db.registerTeacher(profLin);
         db.registerStudent(gino);
 
-        system.createCourse(profLin, "CS101", "物件導向程式設計", 3, 50, new TimeSlot(1, 2, 4));
-        system.createCourse(profLin, "CS102", "資料結構", 3, 50, new TimeSlot(3, 5, 7));
+        // 預設開一門課，並讓 Gino 預先選修
+        TimeSlot defaultTime = new TimeSlot(1, 2, 4);
+        try {
+            system.createCourse(profLin, "CS101", "物件導向程式設計", 3, 50, defaultTime);
+            Course preExistingCourse = db.getAllCourses().get(0);
+            system.enroll(gino, preExistingCourse);
+        } catch (Exception e) {
+            System.out.println("預設資料處理失敗: " + e.getMessage());
+        }
 
         // --- 2. 設定主視窗 ---
         setTitle("學校行政管理系統");

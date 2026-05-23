@@ -2,7 +2,11 @@ import java.util.Map;
 
 public class GradeManager {
     
-    public boolean gradeStudent(Teacher teacher, Student student, Course course, double score) {
+    public boolean gradeStudent(Teacher teacher, Student student, Course course, double score) throws Exception {
+        if (score < 0.0 || score > 100.0) {
+            throw new Exception("登記失敗：學生成績必須介於 0 到 100 之間！");
+        }
+
         if (!teacher.getTeachingCourses().contains(course)) return false;
         if (!course.getEnrolledStudents().contains(student)) return false;
 
