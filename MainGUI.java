@@ -6,7 +6,7 @@ import java.util.Map;
 
 public class MainGUI extends JFrame {
 
-    // --- 系統大腦與虛擬資料庫 ---
+    // --- 選課系統與虛擬資料庫 ---
     private FakeDatabase db = new FakeDatabase();
     private RegistrationSystem system = new RegistrationSystem(db);
 
@@ -14,8 +14,9 @@ public class MainGUI extends JFrame {
     private CardLayout cardLayout = new CardLayout();
     private JPanel mainContainer = new JPanel(cardLayout);
 
-    // --- 三大主要畫面 ---
+    // --- 四大主要畫面 ---
     private JPanel loginPanel = new JPanel();
+    private JPanel registerPanel = new JPanel();
     private JPanel studentPanel = new JPanel();
     private JPanel teacherPanel = new JPanel();
 
@@ -52,9 +53,11 @@ public class MainGUI extends JFrame {
         // --- 3. 建立並加入卡片 ---
         buildLoginPanel();
         buildStudentPanel();
+        buildRegisterPanel();
         buildTeacherPanel();
 
         mainContainer.add(loginPanel, "LoginCard");
+        mainContainer.add(registerPanel, "RegisterCard");
         mainContainer.add(studentPanel, "StudentCard");
         mainContainer.add(teacherPanel, "TeacherCard");
 
@@ -67,24 +70,30 @@ public class MainGUI extends JFrame {
     // ==================== 登入畫面 ====================
     private void buildLoginPanel() {
         loginPanel.setLayout(new GridBagLayout());
-        JPanel formPanel = new JPanel(new GridLayout(3, 2, 10, 10));
+        JPanel formPanel = new JPanel(new GridLayout(4, 2, 10, 10));
 
         JLabel lblId = new JLabel("帳號 (學號/教師編號):");
         JTextField txtId = new JTextField(15);
         JLabel lblPwd = new JLabel("密碼:");
         JPasswordField txtPwd = new JPasswordField(15);
         JButton btnLogin = new JButton("登入系統");
+        JButton btnGoRegister = new JButton("註冊帳號");
 
         formPanel.add(lblId);
         formPanel.add(txtId);
         formPanel.add(lblPwd);
         formPanel.add(txtPwd);
-        formPanel.add(new JLabel("")); // 排版空位
+        formPanel.add(btnGoRegister);
         formPanel.add(btnLogin);
 
         loginPanel.add(formPanel);
         // 綁定鍵盤的 Enter/Return 鍵到登入按鈕上
         this.getRootPane().setDefaultButton(btnLogin);
+
+        //註冊按鈕
+        btnGoRegister.addActionListener(e -> {
+            cardLayout.show(mainContainer, "RegisterCard");
+        });
 
         // 登入按鈕邏輯
         btnLogin.addActionListener(e -> {
@@ -114,6 +123,59 @@ public class MainGUI extends JFrame {
         });
     }
 
+    // ==================== 註冊畫面 ====================
+    private void buildRegisterPanel() {
+        registerPanel.setLayout(new GridBagLayout());
+        JPanel formPanel = new JPanel(new GridLayout(5, 2, 10, 10));
+        formPanel.setBorder(BorderFactory.createTitledBorder("註冊新帳號"));
+        JLabel lblRole = new JLabel("身分:");
+        JComboBox<String> comboRole = new JComboBox<>(new String[]{"學生", "教授"});
+        JLabel lblId = new JLabel("帳號 (學號/教師編號):");
+        JTextField txtId = new JTextField(15);
+        JLabel lblName = new JLabel("姓名:");
+        JTextField txtName = new JTextField(15);
+        JLabel lblPwd = new JLabel("密碼:");
+        JPasswordField txtPwd = new JPasswordField(15);
+        JButton btnRegister = new JButton("確認註冊");
+        JButton btnBack = new JButton("返回登入");
+        formPanel.add(lblRole); formPanel.add(comboRole);
+        formPanel.add(lblId);   formPanel.add(txtId);
+        formPanel.add(lblName); formPanel.add(txtName);
+        formPanel.add(lblPwd);  formPanel.add(txtPwd);
+        formPanel.add(btnBack); formPanel.add(btnRegister);
+        registerPanel.add(formPanel);
+        btnBack.addActionListener(e -> {
+            cardLayout.show(mainContainer, "LoginCard");
+        });
+        btnRegister.addActionListener(e -> {
+            String role = (String) comboRole.getSelectedItem();
+            String uid = txtId.getText().trim();
+            String name = txtName.getText().trim();
+            String pwd = new String(txtPwd.getPassword()).trim();
+            if (uid.isEmpty() || name.isEmpty() || pwd.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "請填寫完整資訊！", "註冊失敗", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            if ("學生".equals(role)) {
+                if (db.findStudent(uid) != null) {
+                    JOptionPane.showMessageDialog(this, "該學號已存在！", "註冊失敗", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                db.registerStudent(new Student(uid, name, pwd));
+            } else {
+                if (db.findTeacher(uid) != null) {
+                    JOptionPane.showMessageDialog(this, "該教師編號已存在！", "註冊失敗", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                db.registerTeacher(new Teacher(uid, name, pwd));
+            }
+            JOptionPane.showMessageDialog(this, "註冊成功！請重新登入。");
+            txtId.setText(""); txtName.setText(""); txtPwd.setText("");
+            cardLayout.show(mainContainer, "LoginCard");
+        });
+    }
+
+
     // ==================== 學生畫面 ====================
     private void buildStudentPanel() {
         studentPanel.setLayout(new BorderLayout());
@@ -137,7 +199,7 @@ public class MainGUI extends JFrame {
 
         // 分頁 1：瀏覽與選課
         JPanel enrollPanel = new JPanel(new BorderLayout());
-        String[] allCols = {"課程代碼", "課程名稱", "學分", "授課教師"};
+        String[] allCols = {"課程代碼", "課程名稱", "學分", "授課教師", "星期（節次）"};
         allCoursesModel = new DefaultTableModel(allCols, 0){
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -145,6 +207,15 @@ public class MainGUI extends JFrame {
             }
         };
         JTable allCoursesTable = new JTable(allCoursesModel);
+        allCoursesTable.setRowHeight(20); // 加寬課程表格
+        allCoursesTable.getTableHeader().setReorderingAllowed(false);
+        // 設定各欄位的預設寬度
+        allCoursesTable.getColumnModel().getColumn(0).setPreferredWidth(70);  // 課程代碼
+        allCoursesTable.getColumnModel().getColumn(1).setPreferredWidth(130); // 課程名稱 (加寬)
+        allCoursesTable.getColumnModel().getColumn(2).setPreferredWidth(40);  // 學分
+        allCoursesTable.getColumnModel().getColumn(3).setPreferredWidth(80);  // 授課教師
+        allCoursesTable.getColumnModel().getColumn(4).setPreferredWidth(60);  // 星期（節次）
+        
         enrollPanel.add(new JScrollPane(allCoursesTable), BorderLayout.CENTER);
         
         JButton btnEnroll = new JButton("確認選取該課程");
@@ -168,7 +239,7 @@ public class MainGUI extends JFrame {
 
         // 分頁 2：我的課表
         JPanel mySchedulePanel = new JPanel(new BorderLayout());
-        String[] myCols = {"課程名稱", "學分", "成績"};
+        String[] myCols = {"課程代碼", "課程名稱", "學分", "成績"};
         myCoursesModel = new DefaultTableModel(myCols, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -176,6 +247,8 @@ public class MainGUI extends JFrame {
             }
         };
         JTable myCoursesTable = new JTable(myCoursesModel);
+        myCoursesTable.setRowHeight(20);
+        myCoursesTable.getTableHeader().setReorderingAllowed(false);
         mySchedulePanel.add(new JScrollPane(myCoursesTable), BorderLayout.CENTER);
 
         tabbedPane.addTab("瀏覽全校課程", enrollPanel);
@@ -189,7 +262,7 @@ public class MainGUI extends JFrame {
         // 更新全校課程
         allCoursesModel.setRowCount(0);
         for (Course c : db.getAllCourses()) {
-            allCoursesModel.addRow(new Object[]{c.getCourseId(), c.getCourseName(), c.getCredits(), c.getTeacher().getName()});
+            allCoursesModel.addRow(new Object[]{c.getCourseId(), c.getCourseName(), c.getCredits(), c.getTeacher().getName(), c.getTimeSlot().toString()});
         }
 
         // 更新我的課表
@@ -198,7 +271,7 @@ public class MainGUI extends JFrame {
         for (Course c : currentStudent.getMyCourses()) {
             Double score = grades.get(c);
             String scoreStr = (score == null) ? "尚未評分" : score.toString();
-            myCoursesModel.addRow(new Object[]{c.getCourseName(), c.getCredits(), scoreStr});
+            myCoursesModel.addRow(new Object[]{c.getCourseId(), c.getCourseName(), c.getCredits(), scoreStr});
         }
     }
 
@@ -290,6 +363,8 @@ public class MainGUI extends JFrame {
             }
         };
         studentsTable = new JTable(studentsTableModel);
+        studentsTable.setRowHeight(20);
+        studentsTable.getTableHeader().setReorderingAllowed(false);
         gradePanel.add(new JScrollPane(studentsTable), BorderLayout.CENTER);
 
         // 底部：輸入分數區塊
@@ -400,6 +475,7 @@ public class MainGUI extends JFrame {
         }
 
         // 2. 主題啟動後，利用迴圈強制修改 Nimbus 內部的所有字體設定
+        
         Font uiFont = new Font("微軟正黑體", Font.PLAIN, 15); // 設定你想要的字體與大小
         
         // 取得 Nimbus 專屬的預設資料庫
