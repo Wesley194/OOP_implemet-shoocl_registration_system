@@ -24,6 +24,7 @@ public class Course {
     public String getCourseId() { return courseId; }
     public String getCourseName() { return courseName; }
     public int getCredits() { return credits; }
+    public int getMaxCapacity() { return maxCapacity; }
     public TimeSlot getTimeSlot() { return timeSlot; }
     public Teacher getTeacher() { return teacher; } // 修復了警告
     public List<Student> getEnrolledStudents() { return enrolledStudents; }
