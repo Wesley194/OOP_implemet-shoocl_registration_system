@@ -5,10 +5,10 @@ public class RegistrationSystem {
     private GradeManager gradeManager;
 
     // 建構子：在系統通電啟動時，把各個次模組實體化並接好線
-    public RegistrationSystem(FakeDatabase database) {
+    public RegistrationSystem(SqliteDatabase database) {
         this.courseManager = new CourseManager(database);
-        this.enrollmentManager = new EnrollmentManager();
-        this.gradeManager = new GradeManager();
+        this.enrollmentManager = new EnrollmentManager(database);
+        this.gradeManager = new GradeManager(database);
     }
 
     // ----------------------------------------------------

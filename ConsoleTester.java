@@ -4,29 +4,11 @@ import java.util.Scanner;
 
 public class ConsoleTester {
     public static void main(String[] args) {
-        // 1. 系統初始化
-        FakeDatabase db = new FakeDatabase();
+        // 系統初始化
+        SqliteDatabase db = new SqliteDatabase();
         RegistrationSystem system = new RegistrationSystem(db);
 
-        // 2. 塞入預設假資料
-        Teacher profLin = new Teacher("T001", "林教授", "1234");
-        Student gino = new Student("B112345", "Gino", "0000");
-        db.registerTeacher(profLin);
-        db.registerStudent(gino);
-
-        // 預設開一門課，並讓 Gino 預先選修
-        TimeSlot defaultTime = new TimeSlot(1, 2, 4);
-        system.createCourse(profLin, "CS101", "物件導向程式設計", 3, 50, defaultTime);
-        Course preExistingCourse = db.getAllCourses().get(0);
-        
-        // 使用 try-catch 處理預設選課
-        try {
-            system.enroll(gino, preExistingCourse);
-        } catch (Exception e) {
-            System.out.println("預設選課失敗: " + e.getMessage());
-        }
-
-        // 3. 啟動終端機
+        // 啟動終端機
         Scanner scanner = new Scanner(System.in);
         System.out.println("=== 學校行政管理系統 ===");
 
@@ -148,7 +130,7 @@ public class ConsoleTester {
     }
 
     // =================學生介面=================
-    private static void runStudentMenu(Scanner scanner, RegistrationSystem system, Student student, FakeDatabase db) {
+    private static void runStudentMenu(Scanner scanner, RegistrationSystem system, Student student, SqliteDatabase db) {
         while (true) {
             System.out.println("\n=== 學生功能選單 ===");
             System.out.println("1. 瀏覽全校課程與選課");

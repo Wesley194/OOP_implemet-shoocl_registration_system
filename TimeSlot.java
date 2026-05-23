@@ -18,4 +18,7 @@ public class TimeSlot {
     public String toString() {
         return "星期" + dayOfWeek + " (" + startPeriod + "~" + endPeriod + "節)";
     }
+    public int getDayOfWeek() { return dayOfWeek; }
+    public int getStartPeriod() { return startPeriod; }
+    public int getEndPeriod() { return endPeriod; }
 }

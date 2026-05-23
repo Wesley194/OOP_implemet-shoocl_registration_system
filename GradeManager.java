@@ -1,13 +1,18 @@
 import java.util.Map;
 
 public class GradeManager {
-    
-    public boolean gradeStudent(Teacher teacher, Student student, Course course, double score) {
-        if (!teacher.getTeachingCourses().contains(course)) return false;
-        if (!course.getEnrolledStudents().contains(student)) return false;
+    private SqliteDatabase database;
+    public GradeManager(SqliteDatabase database) {
+        this.database = database;
+    }
 
-        student.setGrade(course, score);
-        return true;
+    public boolean gradeStudent(Teacher teacher, Student student, Course course, double score) {
+        boolean success = database.updateGrade(student, course, score);
+        if (success) {
+            student.setGrade(course, score);
+            return true;
+        }
+        return false;
     }
 
     public double calculateGPA(Student student) {

@@ -6,8 +6,8 @@ import java.util.Map;
 
 public class MainGUI extends JFrame {
 
-    // --- 選課系統與虛擬資料庫 ---
-    private FakeDatabase db = new FakeDatabase();
+    // --- 系統大腦與虛擬資料庫 ---
+    private SqliteDatabase db = new SqliteDatabase();
     private RegistrationSystem system = new RegistrationSystem(db);
 
     // --- 畫面切換工具 (卡片佈局) ---
@@ -34,15 +34,6 @@ public class MainGUI extends JFrame {
     private JLabel lblTeacherWelcome = new JLabel();
 
     public MainGUI() {
-        // --- 1. 初始化預設資料 ---
-        Teacher profLin = new Teacher("T001", "林教授", "1234");
-        Student gino = new Student("B112345", "Gino", "0000");
-
-        db.registerTeacher(profLin);
-        db.registerStudent(gino);
-
-        system.createCourse(profLin, "CS101", "物件導向程式設計", 3, 50, new TimeSlot(1, 2, 4));
-        system.createCourse(profLin, "CS102", "資料結構", 3, 50, new TimeSlot(3, 5, 7));
 
         // --- 2. 設定主視窗 ---
         setTitle("學校行政管理系統");
@@ -104,6 +95,14 @@ public class MainGUI extends JFrame {
             Student s = db.findStudent(uid);
 
             if (t != null && t.verifyPassword(pwd)) {
+                // 把資料庫裡屬於這位老師的課都拿出來
+                List<Course> allCourses = db.getAllCourses();
+                for (Course c : allCourses) {
+                    if (c.getTeacher().getUid().equals(t.getUid())) {
+                        db.hydrateCourseStudents(c);
+                        t.assignCourse(c);
+                    }
+                }
                 currentTeacher = t;
                 JOptionPane.showMessageDialog(this, "教授登入成功！歡迎 " + t.getName());
                 refreshTeacherView();
@@ -111,6 +110,16 @@ public class MainGUI extends JFrame {
                 txtId.setText(""); txtPwd.setText(""); // 清空輸入框
 
             } else if (s != null && s.verifyPassword(pwd)) {
+                Map<Course, Double> gradesMap = db.getStudentGradesMap(s.getUid());
+                for (Map.Entry<Course, Double> entry : gradesMap.entrySet()) {
+                    Course c = entry.getKey();
+                    Double score = entry.getValue();
+                    
+                    s.enrollInCourse(c); // 恢復選課紀錄
+                    if (score != null) {
+                        s.setGrade(c, score); // 恢復成績紀錄
+                    }
+                }
                 currentStudent = s;
                 JOptionPane.showMessageDialog(this, "學生登入成功！歡迎 " + s.getName());
                 refreshStudentView();
@@ -330,7 +339,7 @@ public class MainGUI extends JFrame {
                 TimeSlot time = new TimeSlot(day, start, end);
                 system.createCourse(currentTeacher, code, name, credits, 50, time);
 
-                JOptionPane.showMessageDialog(teacherPanel, "✅ 課程 [" + name + "] 新增成功！");
+                JOptionPane.showMessageDialog(teacherPanel, " 課程 [" + name + "] 新增成功！");
                 
                 // 清空輸入框
                 txtCode.setText(""); txtName.setText(""); txtCredits.setText("");
@@ -408,11 +417,11 @@ public class MainGUI extends JFrame {
                 boolean success = system.gradeStudent(currentTeacher, targetStudent, selectedCourse, score);
                 
                 if (success) {
-                    JOptionPane.showMessageDialog(teacherPanel, "✅ 成績登記成功！");
+                    JOptionPane.showMessageDialog(teacherPanel, " 成績登記成功！");
                     txtScore.setText(""); // 清空分數框
                     updateStudentsTable(); // 重新整理表格，顯示最新分數
                 } else {
-                    JOptionPane.showMessageDialog(teacherPanel, "❌ 系統拒絕登記。", "錯誤", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(teacherPanel, " 系統拒絕登記。", "錯誤", JOptionPane.ERROR_MESSAGE);
                 }
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(teacherPanel, "請輸入有效的數字分數！", "格式錯誤", JOptionPane.ERROR_MESSAGE);
