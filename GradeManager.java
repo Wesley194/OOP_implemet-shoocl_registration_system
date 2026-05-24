@@ -6,7 +6,12 @@ public class GradeManager {
         this.database = database;
     }
 
-    public boolean gradeStudent(Teacher teacher, Student student, Course course, double score) {
+
+    public boolean gradeStudent(Teacher teacher, Student student, Course course, double score) throws Exception {
+        
+        if (score < 0.0 || score > 100.0) {
+            throw new Exception("登記失敗：學生成績必須介於 0 到 100 之間！");
+        }
         boolean success = database.updateGrade(student, course, score);
         if (success) {
             student.setGrade(course, score);
@@ -14,7 +19,6 @@ public class GradeManager {
         }
         return false;
     }
-
     public double calculateGPA(Student student) {
         Map<Course, Double> grades = student.getCourseGrades();
         if (grades.isEmpty()) return 0.0;
@@ -47,3 +51,4 @@ public class GradeManager {
         return 0.0;                  
     }
 }
+

@@ -62,8 +62,12 @@ public class ConsoleTester {
                 int end = Integer.parseInt(scanner.nextLine());
                 
                 TimeSlot time = new TimeSlot(day, start, end); 
-                system.createCourse(teacher, courseId, courseName, credits, 50, time);
-                System.out.println("✅ 課程 [" + courseName + "] 新增成功！");
+                try {
+                    system.createCourse(teacher, courseId, courseName, credits, 50, time);
+                    System.out.println("✅ 課程 [" + courseName + "] 新增成功！");
+                } catch (Exception e) {
+                    System.out.println("❌ " + e.getMessage());
+                }
 
             } else if (choice.equals("2")) {
                 System.out.println("\n--- 我的開課清單 ---");
@@ -120,11 +124,15 @@ public class ConsoleTester {
             System.out.print("請輸入 [" + targetStudent.getName() + "] 的分數 (0~100): ");
             double score = Double.parseDouble(scanner.nextLine());
 
-            boolean success = system.gradeStudent(teacher, targetStudent, course, score);
-            if (success) {
-                System.out.println(" 成績登記成功！");
-            } else {
-                System.out.println(" 系統拒絕登記。");
+            try {
+                boolean success = system.gradeStudent(teacher, targetStudent, course, score);
+                if (success) {
+                    System.out.println("成績登記成功！");
+                } else {
+                    System.out.println("系統拒絕登記。");
+                }
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
             }
         }
     }

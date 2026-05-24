@@ -42,6 +42,7 @@ public class CourseManager {
         Course newCourse = new Course(courseId, courseName, credits, maxCapacity, time, teacher);
         teacher.assignCourse(newCourse);
         database.addCourseToSystem(newCourse);
-        database.addCourseToSystem(newCourse);
+
     }
 }
+
