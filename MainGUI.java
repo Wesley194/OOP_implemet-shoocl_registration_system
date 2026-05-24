@@ -438,8 +438,10 @@ public class MainGUI extends JFrame {
                 
                 // 開課成功後，刷新下拉選單，讓成績分頁馬上能看到新課！
                 refreshTeacherView(); 
-            } catch (Exception ex) {
+            } catch (NumberFormatException ex) {
                 JOptionPane.showMessageDialog(teacherPanel, "請檢查輸入格式，學分與時間必須為數字！", "格式錯誤", JOptionPane.ERROR_MESSAGE);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(teacherPanel, ex.getMessage(), "開課失敗", JOptionPane.ERROR_MESSAGE);
             }
         });
         addCoursePanel.add(formPanel); // 將表單加入分頁
@@ -515,7 +517,7 @@ public class MainGUI extends JFrame {
                     JOptionPane.showMessageDialog(teacherPanel, " 系統拒絕登記。", "錯誤", JOptionPane.ERROR_MESSAGE);
                 }
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(teacherPanel, "請輸入有效的數字分數！", "格式錯誤", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(teacherPanel, ex.getMessage(), "成績登記失敗", JOptionPane.ERROR_MESSAGE);
             }
         });
 
