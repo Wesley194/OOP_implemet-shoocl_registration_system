@@ -288,7 +288,7 @@ public class MainGUI extends JFrame {
         // 分頁 3：我的課表
         JPanel myScheduleGridPanel = new JPanel(new BorderLayout());
         String[] scheduleCols = {"節次", "星期一", "星期二", "星期三", "星期四", "星期五"};
-        scheduleModel = new DefaultTableModel(scheduleCols, 8) {
+        scheduleModel = new DefaultTableModel(scheduleCols, 14) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
@@ -345,7 +345,7 @@ public class MainGUI extends JFrame {
         myCoursesModel.setRowCount(0);
 
         // 初始化課表網格
-        for (int r = 0; r < 8; r++) {
+        for (int r = 0; r < 14; r++) {
             scheduleModel.setValueAt((r + 1), r, 0);
             for (int c = 1; c <= 5; c++) {
                 scheduleModel.setValueAt("", r, c);
@@ -367,7 +367,7 @@ public class MainGUI extends JFrame {
                 int end = ts.getEndPeriod();
                 String cellText = "<html><center>" + c.getCourseName() + "<br>" + c.getCourseId() + "<br>" + c.getTeacher().getName() + "</center></html>";
                 for (int period = start; period <= end; period++) {
-                    if (period >= 1 && period <= 8) {
+                    if (period >= 1 && period <= 14) {
                         scheduleModel.setValueAt(cellText, period - 1, day);
                     }
                 }
