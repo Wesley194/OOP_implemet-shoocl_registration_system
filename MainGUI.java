@@ -3,6 +3,8 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.util.List;
 import java.util.Map;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
 public class MainGUI extends JFrame {
 
@@ -31,13 +33,15 @@ public class MainGUI extends JFrame {
     private JTable studentsTable;
     private DefaultTableModel allCoursesModel;
     private DefaultTableModel myCoursesModel;
+    private DefaultTableModel scheduleModel;
+    private JTable scheduleTable;
     private JLabel lblTeacherWelcome = new JLabel();
 
     public MainGUI() {
 
         // --- 2. 設定主視窗 ---
         setTitle("學校行政管理系統");
-        setSize(650, 500);
+        setSize(800, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null); // 視窗置中顯示
 
@@ -61,38 +65,46 @@ public class MainGUI extends JFrame {
     // ==================== 登入畫面 ====================
     private void buildLoginPanel() {
         loginPanel.setLayout(new GridBagLayout());
-        JPanel formPanel = new JPanel(new GridLayout(4, 2, 10, 10));
+        JPanel formPanel = new JPanel(new GridLayout(2, 2, 10, 10));
 
-        JLabel lblId = new JLabel("帳號 (學號/教師編號):");
+        JLabel lblId = new JLabel("帳號 (學號/教師/管理員編號):");
         JTextField txtId = new JTextField(15);
         JLabel lblPwd = new JLabel("密碼:");
         JPasswordField txtPwd = new JPasswordField(15);
         JButton btnLogin = new JButton("登入系統");
-        JButton btnGoRegister = new JButton("註冊帳號");
+        //JButton btnGoRegister = new JButton("註冊帳號");
 
         formPanel.add(lblId);
         formPanel.add(txtId);
         formPanel.add(lblPwd);
         formPanel.add(txtPwd);
-        formPanel.add(btnGoRegister);
-        formPanel.add(btnLogin);
+        //formPanel.add(btnGoRegister);
 
-        loginPanel.add(formPanel);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        loginPanel.add(formPanel, gbc);
+        gbc.gridy = 1; // 把按鈕放在 formPanel 的正下方
+        gbc.insets = new Insets(20, 0, 0, 0); // 加上方距 20px
+        loginPanel.add(btnLogin, gbc);
+
         // 綁定鍵盤的 Enter/Return 鍵到登入按鈕上
         this.getRootPane().setDefaultButton(btnLogin);
 
-        //註冊按鈕
-        btnGoRegister.addActionListener(e -> {
+        //註冊按鈕（已移除）
+        /*btnGoRegister.addActionListener(e -> {
             cardLayout.show(mainContainer, "RegisterCard");
-        });
+        });*/
 
         // 登入按鈕邏輯
         btnLogin.addActionListener(e -> {
             String uid = txtId.getText();
             String pwd = new String(txtPwd.getPassword());
 
+            //Admin a = db.findAdmin(uid); // 管理員
             Teacher t = db.findTeacher(uid);
             Student s = db.findStudent(uid);
+
 
             if (t != null && t.verifyPassword(pwd)) {
                 // 把資料庫裡屬於這位老師的課都拿出來
@@ -126,7 +138,11 @@ public class MainGUI extends JFrame {
                 cardLayout.show(mainContainer, "StudentCard");
                 txtId.setText(""); txtPwd.setText(""); // 清空輸入框
 
-            } else {
+            } /*else if (a != null && a.verifyPassword(pwd)) {
+                JOptionPane.showMessageDialog(this, "管理員登入成功！");
+                txtId.setText(""); txtPwd.setText(""); // 清空輸入框
+                cardLayout.show(mainContainer, "RegisterCard");
+            }*/ else {
                 JOptionPane.showMessageDialog(this, "帳號或密碼錯誤！", "登入失敗", JOptionPane.ERROR_MESSAGE);
             }
         });
@@ -178,7 +194,7 @@ public class MainGUI extends JFrame {
                 }
                 db.registerTeacher(new Teacher(uid, name, pwd));
             }
-            JOptionPane.showMessageDialog(this, "註冊成功！請重新登入。");
+            JOptionPane.showMessageDialog(this, "註冊成功！");
             txtId.setText(""); txtName.setText(""); txtPwd.setText("");
             cardLayout.show(mainContainer, "LoginCard");
         });
@@ -191,7 +207,7 @@ public class MainGUI extends JFrame {
 
         // 上方：歡迎與登出
         JPanel topPanel = new JPanel(new BorderLayout());
-        lblStudentWelcome.setFont(new Font("微軟正黑體", Font.BOLD, 14));
+        lblStudentWelcome.setFont(new Font("微軟正黑體", Font.BOLD, 16));
         lblStudentWelcome.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         topPanel.add(lblStudentWelcome, BorderLayout.WEST);
         
@@ -216,14 +232,14 @@ public class MainGUI extends JFrame {
             }
         };
         JTable allCoursesTable = new JTable(allCoursesModel);
-        allCoursesTable.setRowHeight(20); // 加寬課程表格
+        allCoursesTable.setRowHeight(25);
         allCoursesTable.getTableHeader().setReorderingAllowed(false);
         // 設定各欄位的預設寬度
         allCoursesTable.getColumnModel().getColumn(0).setPreferredWidth(70);  // 課程代碼
-        allCoursesTable.getColumnModel().getColumn(1).setPreferredWidth(130); // 課程名稱 (加寬)
-        allCoursesTable.getColumnModel().getColumn(2).setPreferredWidth(40);  // 學分
+        allCoursesTable.getColumnModel().getColumn(1).setPreferredWidth(130); // 課程名稱
+        allCoursesTable.getColumnModel().getColumn(2).setPreferredWidth(30);  // 學分
         allCoursesTable.getColumnModel().getColumn(3).setPreferredWidth(80);  // 授課教師
-        allCoursesTable.getColumnModel().getColumn(4).setPreferredWidth(60);  // 星期（節次）
+        allCoursesTable.getColumnModel().getColumn(4).setPreferredWidth(80);  // 星期（節次）
         
         enrollPanel.add(new JScrollPane(allCoursesTable), BorderLayout.CENTER);
         
@@ -246,41 +262,116 @@ public class MainGUI extends JFrame {
             }
         });
 
-        // 分頁 2：我的課表
-        JPanel mySchedulePanel = new JPanel(new BorderLayout());
-        String[] myCols = {"課程代碼", "課程名稱", "學分", "成績"};
+
+        // 分頁 2：我的成績
+        JPanel myGradesPanel = new JPanel(new BorderLayout());
+        String[] myCols = {"課程代碼", "課程名稱", "學分", "授課教師", "星期（節次）", "成績"};
         myCoursesModel = new DefaultTableModel(myCols, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return false; // 讓我的課表表格唯讀
+                return false; 
             }
         };
         JTable myCoursesTable = new JTable(myCoursesModel);
-        myCoursesTable.setRowHeight(20);
+        myCoursesTable.setRowHeight(25);
         myCoursesTable.getTableHeader().setReorderingAllowed(false);
-        mySchedulePanel.add(new JScrollPane(myCoursesTable), BorderLayout.CENTER);
+        // 設定各欄位的預設寬度
+        myCoursesTable.getColumnModel().getColumn(0).setPreferredWidth(60);  // 課程代碼
+        myCoursesTable.getColumnModel().getColumn(1).setPreferredWidth(130); // 課程名稱
+        myCoursesTable.getColumnModel().getColumn(2).setPreferredWidth(10);  // 學分
+        myCoursesTable.getColumnModel().getColumn(3).setPreferredWidth(40);  // 授課教師
+        myCoursesTable.getColumnModel().getColumn(4).setPreferredWidth(80);  // 星期（節次）
+        myCoursesTable.getColumnModel().getColumn(5).setPreferredWidth(70);  // 成績
+        myGradesPanel.add(new JScrollPane(myCoursesTable), BorderLayout.CENTER);
+
+
+        // 分頁 3：我的課表
+        JPanel myScheduleGridPanel = new JPanel(new BorderLayout());
+        String[] scheduleCols = {"節次", "星期一", "星期二", "星期三", "星期四", "星期五"};
+        scheduleModel = new DefaultTableModel(scheduleCols, 8) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        scheduleTable = new JTable(scheduleModel);
+        scheduleTable.setRowHeight(55);
+        scheduleTable.getTableHeader().setReorderingAllowed(false);
+        scheduleTable.getColumnModel().getColumn(0).setPreferredWidth(20);
+        
+        javax.swing.table.DefaultTableCellRenderer centerRenderer = new javax.swing.table.DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
+        centerRenderer.setVerticalAlignment(SwingConstants.TOP);
+        for (int i = 0; i < scheduleTable.getColumnCount(); i++) {
+            scheduleTable.getColumnModel().getColumn(i).setCellRenderer(centerRenderer);
+        }
+        
+        // 點擊儲存格顯示完整資訊
+        scheduleTable.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent e) {
+                int row = scheduleTable.rowAtPoint(e.getPoint());
+                int col = scheduleTable.columnAtPoint(e.getPoint());
+                if (row >= 0 && col > 0) { // 第0欄是節次，不處理
+                    Object value = scheduleTable.getValueAt(row, col);
+                    if (value != null && !value.toString().trim().isEmpty()) {
+                        String cleanText = value.toString().replace("<html><center>", "").replace("</center></html>", "").replace("<br>", "\n").replace("<html>", "").replace("</html>", "");
+                        JOptionPane.showMessageDialog(studentPanel, cleanText, "課程資訊", JOptionPane.INFORMATION_MESSAGE);
+                    }
+                }
+            }
+        });
+        myScheduleGridPanel.add(new JScrollPane(scheduleTable), BorderLayout.CENTER);
 
         tabbedPane.addTab("瀏覽全校課程", enrollPanel);
-        tabbedPane.addTab("我的課表與成績", mySchedulePanel);
+        tabbedPane.addTab("我的課表", myScheduleGridPanel);
+        tabbedPane.addTab("我的成績", myGradesPanel);
         studentPanel.add(tabbedPane, BorderLayout.CENTER);
     }
 
     private void refreshStudentView() {
-        lblStudentWelcome.setText("學生：" + currentStudent.getName() + " (" + currentStudent.getUid() + ") | 目前 GPA: " + system.calculateGPA(currentStudent));
-
+        int totalCredits = 0;
+        for (Course c : currentStudent.getMyCourses()) {
+            totalCredits += c.getCredits();
+        }
+        lblStudentWelcome.setText("學生：" + currentStudent.getName() + " (" + currentStudent.getUid() + ") | 總學分數: " + totalCredits + " | 目前 GPA: " + system.calculateGPA(currentStudent));
+        
         // 更新全校課程
         allCoursesModel.setRowCount(0);
         for (Course c : db.getAllCourses()) {
             allCoursesModel.addRow(new Object[]{c.getCourseId(), c.getCourseName(), c.getCredits(), c.getTeacher().getName(), c.getTimeSlot().toString()});
         }
 
-        // 更新我的課表
+        // 更新我的成績與課表
         myCoursesModel.setRowCount(0);
+
+        // 初始化課表網格
+        for (int r = 0; r < 8; r++) {
+            scheduleModel.setValueAt((r + 1), r, 0);
+            for (int c = 1; c <= 5; c++) {
+                scheduleModel.setValueAt("", r, c);
+            }
+        }
+
         Map<Course, Double> grades = currentStudent.getCourseGrades();
         for (Course c : currentStudent.getMyCourses()) {
+            // 填入成績表
             Double score = grades.get(c);
             String scoreStr = (score == null) ? "尚未評分" : score.toString();
-            myCoursesModel.addRow(new Object[]{c.getCourseId(), c.getCourseName(), c.getCredits(), scoreStr});
+            myCoursesModel.addRow(new Object[]{c.getCourseId(), c.getCourseName(), c.getCredits(), c.getTeacher().getName(), c.getTimeSlot().toString(), scoreStr});
+
+            // 填入視覺化課表
+            TimeSlot ts = c.getTimeSlot();
+            int day = ts.getDayOfWeek();
+            if (day >= 1 && day <= 5) {
+                int start = ts.getStartPeriod();
+                int end = ts.getEndPeriod();
+                String cellText = "<html><center>" + c.getCourseName() + "<br>" + c.getCourseId() + "<br>" + c.getTeacher().getName() + "</center></html>";
+                for (int period = start; period <= end; period++) {
+                    if (period >= 1 && period <= 8) {
+                        scheduleModel.setValueAt(cellText, period - 1, day);
+                    }
+                }
+            }
         }
     }
 
@@ -372,7 +463,7 @@ public class MainGUI extends JFrame {
             }
         };
         studentsTable = new JTable(studentsTableModel);
-        studentsTable.setRowHeight(20);
+        studentsTable.setRowHeight(25);
         studentsTable.getTableHeader().setReorderingAllowed(false);
         gradePanel.add(new JScrollPane(studentsTable), BorderLayout.CENTER);
 
@@ -485,13 +576,12 @@ public class MainGUI extends JFrame {
 
         // 2. 主題啟動後，利用迴圈強制修改 Nimbus 內部的所有字體設定
         
-        Font uiFont = new Font("微軟正黑體", Font.PLAIN, 15); // 設定你想要的字體與大小
+        Font uiFont = new Font("微軟正黑體", Font.PLAIN, 20); // 設定你想要的字體與大小
         
         // 取得 Nimbus 專屬的預設資料庫
         javax.swing.UIDefaults defaults = UIManager.getLookAndFeelDefaults();
         
-        // 用一個自動迴圈，只要名字結尾是 ".font" 的設定（包含 Label.font, TextField.font 等）
-        // 通通強制換成我們設定的大小 15 微軟正黑體
+        // 設定字體大小
         for (Object key : defaults.keySet()) {
             if (key.toString().endsWith(".font")) {
                 defaults.put(key, uiFont);
