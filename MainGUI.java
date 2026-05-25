@@ -3,8 +3,6 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.util.List;
 import java.util.Map;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 
 public class MainGUI extends JFrame {
 
@@ -33,8 +31,8 @@ public class MainGUI extends JFrame {
     private JTable studentsTable;
     private DefaultTableModel allCoursesModel;
     private DefaultTableModel myCoursesModel;
-    private DefaultTableModel scheduleModel;
-    private JTable scheduleTable;
+    private SchedulePanel studentSchedulePanel = new SchedulePanel();
+    private SchedulePanel teacherSchedulePanel = new SchedulePanel();
     private JLabel lblTeacherWelcome = new JLabel();
 
     public MainGUI() {
@@ -44,6 +42,16 @@ public class MainGUI extends JFrame {
         setSize(800, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null); // 視窗置中顯示
+
+        // 關閉視窗時斷開資料庫連線
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                if (db != null) {
+                    db.closeConnection();
+                }
+            }
+        });
 
         // --- 3. 建立並加入卡片 ---
         buildLoginPanel();
@@ -98,8 +106,12 @@ public class MainGUI extends JFrame {
 
         // 登入按鈕邏輯
         btnLogin.addActionListener(e -> {
-            String uid = txtId.getText();
-            String pwd = new String(txtPwd.getPassword());
+            String uid = txtId.getText().trim();
+            String pwd = new String(txtPwd.getPassword()).trim();
+            if (uid.isEmpty() || pwd.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "請輸入完整帳號與密碼！", "輸入錯誤", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
 
             //Admin a = db.findAdmin(uid); // 管理員
             Teacher t = db.findTeacher(uid);
@@ -284,46 +296,8 @@ public class MainGUI extends JFrame {
         myCoursesTable.getColumnModel().getColumn(5).setPreferredWidth(70);  // 成績
         myGradesPanel.add(new JScrollPane(myCoursesTable), BorderLayout.CENTER);
 
-
-        // 分頁 3：我的課表
-        JPanel myScheduleGridPanel = new JPanel(new BorderLayout());
-        String[] scheduleCols = {"節次", "星期一", "星期二", "星期三", "星期四", "星期五"};
-        scheduleModel = new DefaultTableModel(scheduleCols, 14) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
-        scheduleTable = new JTable(scheduleModel);
-        scheduleTable.setRowHeight(55);
-        scheduleTable.getTableHeader().setReorderingAllowed(false);
-        scheduleTable.getColumnModel().getColumn(0).setPreferredWidth(20);
-        
-        javax.swing.table.DefaultTableCellRenderer centerRenderer = new javax.swing.table.DefaultTableCellRenderer();
-        centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
-        centerRenderer.setVerticalAlignment(SwingConstants.TOP);
-        for (int i = 0; i < scheduleTable.getColumnCount(); i++) {
-            scheduleTable.getColumnModel().getColumn(i).setCellRenderer(centerRenderer);
-        }
-        
-        // 點擊儲存格顯示完整資訊
-        scheduleTable.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) {
-                int row = scheduleTable.rowAtPoint(e.getPoint());
-                int col = scheduleTable.columnAtPoint(e.getPoint());
-                if (row >= 0 && col > 0) { // 第0欄是節次，不處理
-                    Object value = scheduleTable.getValueAt(row, col);
-                    if (value != null && !value.toString().trim().isEmpty()) {
-                        String cleanText = value.toString().replace("<html><center>", "").replace("</center></html>", "").replace("<br>", "\n").replace("<html>", "").replace("</html>", "");
-                        JOptionPane.showMessageDialog(studentPanel, cleanText, "課程資訊", JOptionPane.INFORMATION_MESSAGE);
-                    }
-                }
-            }
-        });
-        myScheduleGridPanel.add(new JScrollPane(scheduleTable), BorderLayout.CENTER);
-
         tabbedPane.addTab("瀏覽全校課程", enrollPanel);
-        tabbedPane.addTab("我的課表", myScheduleGridPanel);
+        tabbedPane.addTab("我的課表", studentSchedulePanel);
         tabbedPane.addTab("我的成績", myGradesPanel);
         studentPanel.add(tabbedPane, BorderLayout.CENTER);
     }
@@ -344,35 +318,16 @@ public class MainGUI extends JFrame {
         // 更新我的成績與課表
         myCoursesModel.setRowCount(0);
 
-        // 初始化課表網格
-        for (int r = 0; r < 14; r++) {
-            scheduleModel.setValueAt((r + 1), r, 0);
-            for (int c = 1; c <= 5; c++) {
-                scheduleModel.setValueAt("", r, c);
-            }
-        }
-
         Map<Course, Double> grades = currentStudent.getCourseGrades();
         for (Course c : currentStudent.getMyCourses()) {
             // 填入成績表
             Double score = grades.get(c);
             String scoreStr = (score == null) ? "尚未評分" : score.toString();
             myCoursesModel.addRow(new Object[]{c.getCourseId(), c.getCourseName(), c.getCredits(), c.getTeacher().getName(), c.getTimeSlot().toString(), scoreStr});
-
-            // 填入視覺化課表
-            TimeSlot ts = c.getTimeSlot();
-            int day = ts.getDayOfWeek();
-            if (day >= 1 && day <= 5) {
-                int start = ts.getStartPeriod();
-                int end = ts.getEndPeriod();
-                String cellText = "<html><center>" + c.getCourseName() + "<br>" + c.getCourseId() + "<br>" + c.getTeacher().getName() + "</center></html>";
-                for (int period = start; period <= end; period++) {
-                    if (period >= 1 && period <= 14) {
-                        scheduleModel.setValueAt(cellText, period - 1, day);
-                    }
-                }
-            }
         }
+
+        // 更新視覺化課表
+        studentSchedulePanel.updateCourses(currentStudent.getMyCourses(), true);
     }
 
     // ==================== 老師畫面 ====================
@@ -419,13 +374,22 @@ public class MainGUI extends JFrame {
         formPanel.add(new JLabel("")); formPanel.add(btnAddCourse);
 
         btnAddCourse.addActionListener(e -> {
+            String code = txtCode.getText().trim();
+            String name = txtName.getText().trim();
+            String creditsStr = txtCredits.getText().trim();
+            String dayStr = txtDay.getText().trim();
+            String startStr = txtStart.getText().trim();
+            String endStr = txtEnd.getText().trim();
+            if (code.isEmpty() || name.isEmpty() || creditsStr.isEmpty() || dayStr.isEmpty() || startStr.isEmpty() || endStr.isEmpty()) {
+                JOptionPane.showMessageDialog(teacherPanel, "請填寫完整的所有課程資訊！", "資料不完整", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
             try {
-                String code = txtCode.getText().trim();
-                String name = txtName.getText().trim();
-                int credits = Integer.parseInt(txtCredits.getText().trim());
-                int day = Integer.parseInt(txtDay.getText().trim());
-                int start = Integer.parseInt(txtStart.getText().trim());
-                int end = Integer.parseInt(txtEnd.getText().trim());
+                int credits = Integer.parseInt(creditsStr);
+                int day = Integer.parseInt(dayStr);
+                int start = Integer.parseInt(startStr);
+                int end = Integer.parseInt(endStr);
 
                 TimeSlot time = new TimeSlot(day, start, end);
                 system.createCourse(currentTeacher, code, name, credits, 50, time);
@@ -499,8 +463,14 @@ public class MainGUI extends JFrame {
                 return;
             }
 
+            String scoreStr = txtScore.getText().trim();
+            if (scoreStr.isEmpty()) {
+                JOptionPane.showMessageDialog(teacherPanel, "請輸入分數！", "輸入錯誤", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
             try {
-                double score = Double.parseDouble(txtScore.getText().trim());
+                double score = Double.parseDouble(scoreStr);
                 
                 // 找出對應的課程與學生物件
                 Course selectedCourse = currentTeacher.getTeachingCourses().get(selectedCourseIndex);
@@ -516,6 +486,8 @@ public class MainGUI extends JFrame {
                 } else {
                     JOptionPane.showMessageDialog(teacherPanel, " 系統拒絕登記。", "錯誤", JOptionPane.ERROR_MESSAGE);
                 }
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(teacherPanel, "分數必須為數字！", "格式錯誤", JOptionPane.ERROR_MESSAGE);
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(teacherPanel, ex.getMessage(), "成績登記失敗", JOptionPane.ERROR_MESSAGE);
             }
@@ -523,6 +495,7 @@ public class MainGUI extends JFrame {
 
         tabbedPane.addTab("新增課程", addCoursePanel);
         tabbedPane.addTab("學生名單與登記成績", gradePanel);
+        tabbedPane.addTab("我的課表", teacherSchedulePanel);
 
         teacherPanel.add(tabbedPane, BorderLayout.CENTER);
     }
@@ -540,6 +513,9 @@ public class MainGUI extends JFrame {
         
         // 更新表格
         updateStudentsTable();
+
+        // 更新視覺化課表
+        teacherSchedulePanel.updateCourses(myCourses, false);
     }
 
     // 負責從目前選定的課程中，撈出學生並畫在表格上的方法
