@@ -74,6 +74,9 @@ public class MainGUI extends JFrame {
         JButton btnLogin = new JButton("登入系統");
         //JButton btnGoRegister = new JButton("註冊帳號");
 
+       
+
+
         formPanel.add(lblId);
         formPanel.add(txtId);
         formPanel.add(lblPwd);
@@ -254,8 +257,10 @@ public class MainGUI extends JFrame {
             }
             Course selectedCourse = db.getAllCourses().get(row);
             try {
-                system.enroll(currentStudent, selectedCourse);
-                JOptionPane.showMessageDialog(this, "選課成功！");
+                /////////////////////////
+                system.registerForLottery(currentStudent, selectedCourse);
+                JOptionPane.showMessageDialog(this, "登記成功！請等待抽籤結果。");
+                /////////////////////////
                 refreshStudentView(); // 選課成功後立即重整畫面
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, ex.getMessage(), "選課失敗", JOptionPane.ERROR_MESSAGE);
@@ -284,7 +289,30 @@ public class MainGUI extends JFrame {
         myCoursesTable.getColumnModel().getColumn(5).setPreferredWidth(70);  // 成績
         myGradesPanel.add(new JScrollPane(myCoursesTable), BorderLayout.CENTER);
 
+        // 【新增退選按鈕區塊】
+        JButton btnDrop = new JButton("退選該課程");
+        myGradesPanel.add(btnDrop, BorderLayout.SOUTH);
 
+        btnDrop.addActionListener(e -> {
+            int row = myCoursesTable.getSelectedRow();
+            if (row == -1) {
+                JOptionPane.showMessageDialog(this, "請先在表格中點選一門要退選的課程！", "提示", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            Course selectedCourse = currentStudent.getMyCourses().get(row);
+            
+            // 加入二次確認視窗
+            int confirm = JOptionPane.showConfirmDialog(this, "確定要退選 [" + selectedCourse.getCourseName() + "] 嗎？", "退選確認", JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                try {
+                    system.dropCourse(currentStudent, selectedCourse);
+                    JOptionPane.showMessageDialog(this, "退選成功！");
+                    refreshStudentView(); // 重整畫面
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(this, ex.getMessage(), "退選失敗", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
         // 分頁 3：我的課表
         JPanel myScheduleGridPanel = new JPanel(new BorderLayout());
         String[] scheduleCols = {"節次", "星期一", "星期二", "星期三", "星期四", "星期五"};
@@ -398,7 +426,7 @@ public class MainGUI extends JFrame {
 
         // ====== 分頁 1：新增課程 ======
         JPanel addCoursePanel = new JPanel(new GridBagLayout()); 
-        JPanel formPanel = new JPanel(new GridLayout(7, 2, 10, 10));
+        JPanel formPanel = new JPanel(new GridLayout(4, 4, 10, 10));
         formPanel.setBorder(BorderFactory.createTitledBorder("開設新課程"));
 
         JTextField txtCode = new JTextField(10);
@@ -407,6 +435,8 @@ public class MainGUI extends JFrame {
         JTextField txtDay = new JTextField(10);
         JTextField txtStart = new JTextField(10);
         JTextField txtEnd = new JTextField(10);
+        JTextField txtCapacity = new JTextField("50");
+
 
         formPanel.add(new JLabel("課程代碼 (例 CS103):")); formPanel.add(txtCode);
         formPanel.add(new JLabel("課程名稱:")); formPanel.add(txtName);
@@ -414,9 +444,12 @@ public class MainGUI extends JFrame {
         formPanel.add(new JLabel("上課星期 (1~5):")); formPanel.add(txtDay);
         formPanel.add(new JLabel("開始節次 (例如 2):")); formPanel.add(txtStart);
         formPanel.add(new JLabel("結束節次 (例如 4):")); formPanel.add(txtEnd);
+        formPanel.add(new JLabel("人數上限 (預設50):")); formPanel.add(txtCapacity);
 
         JButton btnAddCourse = new JButton("確認開課");
         formPanel.add(new JLabel("")); formPanel.add(btnAddCourse);
+
+        
 
         btnAddCourse.addActionListener(e -> {
             try {
@@ -426,9 +459,12 @@ public class MainGUI extends JFrame {
                 int day = Integer.parseInt(txtDay.getText().trim());
                 int start = Integer.parseInt(txtStart.getText().trim());
                 int end = Integer.parseInt(txtEnd.getText().trim());
+                
+                int maxCapacity = Integer.parseInt(txtCapacity.getText());
 
                 TimeSlot time = new TimeSlot(day, start, end);
-                system.createCourse(currentTeacher, code, name, credits, 50, time);
+
+                system.createCourse(currentTeacher, code, name, credits, maxCapacity, time);
 
                 JOptionPane.showMessageDialog(teacherPanel, " 課程 [" + name + "] 新增成功！");
                 

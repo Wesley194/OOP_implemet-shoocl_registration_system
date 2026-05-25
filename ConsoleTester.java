@@ -169,8 +169,9 @@ public class ConsoleTester {
                     
                     // 這是升級過後的 try-catch 選課邏輯
                     try {
-                        system.enroll(student, selectedCourse);
-                        System.out.println(" 選課成功！已將 [" + selectedCourse.getCourseName() + "] 加入您的課表。");
+                       // 【修改為新的抽籤登記方法】
+                        system.registerForLottery(student, selectedCourse);
+                        System.out.println(" 登記成功！請等待抽籤結果。");
                     } catch (Exception e) {
                         // 精準捕捉並印出 RegistrationSystem 拋出的錯誤訊息
                         System.out.println(" " + e.getMessage());

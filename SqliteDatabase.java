@@ -46,6 +46,8 @@ public class SqliteDatabase {
         String createStudentsTable = "CREATE TABLE IF NOT EXISTS students (uid TEXT PRIMARY KEY, name TEXT NOT NULL, password TEXT NOT NULL);";
         String createCoursesTable = "CREATE TABLE IF NOT EXISTS courses (course_id TEXT PRIMARY KEY, course_name TEXT NOT NULL, credits INTEGER NOT NULL, max_capacity INTEGER NOT NULL DEFAULT 50, day_of_week INTEGER NOT NULL, start_period INTEGER NOT NULL, end_period INTEGER NOT NULL, teacher_id TEXT NOT NULL, FOREIGN KEY (teacher_id) REFERENCES teachers(uid) ON UPDATE CASCADE ON DELETE RESTRICT);";
         String createEnrollmentsTable = "CREATE TABLE IF NOT EXISTS enrollments (student_id TEXT, course_id TEXT, score REAL, PRIMARY KEY (student_id, course_id), FOREIGN KEY (student_id) REFERENCES students(uid) ON UPDATE CASCADE ON DELETE CASCADE, FOREIGN KEY (course_id) REFERENCES courses(course_id) ON UPDATE CASCADE ON DELETE CASCADE);";
+        //等待抽籤登記表(下方)
+        String createPendingTable = "CREATE TABLE IF NOT EXISTS pending_enrollments (student_id TEXT, course_id TEXT, PRIMARY KEY (student_id, course_id));";
 
         try (Statement stmt = connection.createStatement()) {
             stmt.execute("PRAGMA foreign_keys = ON;"); // 開啟外鍵保護
@@ -53,6 +55,7 @@ public class SqliteDatabase {
             stmt.execute(createStudentsTable);
             stmt.execute(createCoursesTable);
             stmt.execute(createEnrollmentsTable);
+            stmt.execute(createPendingTable);
         } catch (SQLException e) {
             System.err.println(" 建表失敗: " + e.getMessage());
         }
@@ -183,6 +186,8 @@ public class SqliteDatabase {
                 
                 // 3. 把所有零件組裝回 Course 物件，並加入到 List 裡
                 Course course = new Course(cId, cName, credits, maxCap, ts, t);
+                loadEnrolledStudentsForCourse(course);
+                loadPendingStudentsForCourse(course);
                 courseList.add(course);
             }
             
@@ -337,6 +342,83 @@ public class SqliteDatabase {
             }
         } catch (SQLException e) {
             System.err.println(" 撈取修課名單失敗: " + e.getMessage());
+        }
+    }
+
+    // 1. 學生登記抽籤
+    public void savePendingEnrollment(Student student, Course course) throws Exception{
+        String sql = "INSERT INTO pending_enrollments (student_id, course_id) VALUES (?, ?)";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, student.getUid());
+            pstmt.setString(2, course.getCourseId());
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            if (e.getMessage() != null && e.getMessage().toLowerCase().contains("unique")) {
+                throw new Exception("您已經登記過此課程，請等待抽籤結果。"); // 丟出防呆訊息
+            } else {
+                throw new Exception("資料庫異常: " + e.getMessage());
+            }
+        }
+    }
+
+    // 2. 學生取消登記 (抽籤前)
+    public void deletePendingEnrollment(Student student, Course course) {
+        String sql = "DELETE FROM pending_enrollments WHERE student_id = ? AND course_id = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, student.getUid());
+            pstmt.setString(2, course.getCourseId());
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("取消登記異常: " + e.getMessage());
+        }
+    }
+
+    // 3. 學生正式退選 (抽籤後已在課表內)
+    public boolean deleteEnrollment(Student student, Course course) {
+        String sql = "DELETE FROM enrollments WHERE student_id = ? AND course_id = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, student.getUid());
+            pstmt.setString(2, course.getCourseId());
+            int rowsAffected = pstmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("退選異常: " + e.getMessage());
+            return false;
+        }
+    }
+    // 撈取「排隊中」的學生
+    private void loadPendingStudentsForCourse(Course course) {
+        String sql = "SELECT student_id FROM pending_enrollments WHERE course_id = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, course.getCourseId());
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                String studentId = rs.getString("student_id");
+                Student s = findStudent(studentId); // 用學號把學生實體找出來
+                if (s != null) {
+                    course.addPendingStudent(s); // 塞進記憶體裡的排隊名單
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("讀取排隊名單失敗: " + e.getMessage());
+        }
+    }
+
+    // 撈取「已選上」的學生 (抽籤時要算剩餘名額，所以這個也很重要)
+    private void loadEnrolledStudentsForCourse(Course course) {
+        String sql = "SELECT student_id FROM enrollments WHERE course_id = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, course.getCourseId());
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                String studentId = rs.getString("student_id");
+                Student s = findStudent(studentId); 
+                if (s != null) {
+                    course.addStudent(s); // 塞進記憶體裡的正式名單
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("讀取正式名單失敗: " + e.getMessage());
         }
     }
 }

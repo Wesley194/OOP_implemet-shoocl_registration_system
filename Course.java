@@ -9,6 +9,7 @@ public class Course {
     private TimeSlot timeSlot;
     private Teacher teacher;
     private List<Student> enrolledStudents;
+    private List<Student> pendingStudents;//等待抽籤名單
 
     public Course(String courseId, String courseName, int credits, int maxCapacity, TimeSlot timeSlot, Teacher teacher) {
         this.courseId = courseId;
@@ -18,6 +19,7 @@ public class Course {
         this.timeSlot = timeSlot;
         this.teacher = teacher;
         this.enrolledStudents = new ArrayList<>();
+        this.pendingStudents = new ArrayList<>();
     }
 
     public boolean isFull() { return enrolledStudents.size() >= maxCapacity; }
@@ -31,5 +33,19 @@ public class Course {
 
     public void addStudent(Student student) {
         if (!isFull()) enrolledStudents.add(student);
+    }
+    // 【新增以下方法】提供給加退選機制使用
+    public List<Student> getPendingStudents() { return pendingStudents; }
+    
+    public void addPendingStudent(Student student) {
+        if (!pendingStudents.contains(student)) pendingStudents.add(student);
+    }
+    
+    public void removePendingStudent(Student student) {
+        pendingStudents.remove(student);
+    }
+
+    public void removeStudent(Student student) {
+        enrolledStudents.remove(student); // 用於正式退選
     }
 }

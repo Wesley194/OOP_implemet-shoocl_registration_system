@@ -1,14 +1,16 @@
 public class RegistrationSystem {
     // 系統底層依賴的三大專責模組
     private CourseManager courseManager;
-    private EnrollmentManager enrollmentManager;
     private GradeManager gradeManager;
+    private LotteryManager lotteryManager;
+    private SqliteDatabase database;
 
     // 建構子：在系統通電啟動時，把各個次模組實體化並接好線
     public RegistrationSystem(SqliteDatabase database) {
+        this.database = database;
         this.courseManager = new CourseManager(database);
-        this.enrollmentManager = new EnrollmentManager(database);
         this.gradeManager = new GradeManager(database);
+        this.lotteryManager = new LotteryManager(database);
     }
 
     // ----------------------------------------------------
@@ -24,15 +26,23 @@ public class RegistrationSystem {
     public boolean gradeStudent(Teacher teacher, Student student, Course course, double score) throws Exception {
         return gradeManager.gradeStudent(teacher, student, course, score);
     }
-    public void enroll(Student student, Course course) throws CourseFullException, TimeConflictException, Exception {
-        // 委託給 EnrollmentManager 處理
-        enrollmentManager.enroll(student, course);
+    ////////////////
+    public void registerForLottery(Student student, Course course) throws Exception {
+        lotteryManager.registerIntent(student, course);
     }
-
+    ////////////////
     
 
     public double calculateGPA(Student student) {
         // 委託給 GradeManager 處理
         return gradeManager.calculateGPA(student);
+    }
+    // 提供給 GUI 退選用
+    public void dropCourse(Student student, Course course) throws Exception {
+        lotteryManager.dropCourse(student, course);
+    }
+    // 提供給 Admin 用
+    public void runLotterySystem() {
+        lotteryManager.executeAllLotteries(this.database.getAllCourses()); 
     }
 }
