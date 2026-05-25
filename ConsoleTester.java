@@ -21,8 +21,10 @@ public class ConsoleTester {
 
             Teacher currentTeacher = db.findTeacher(uid);
             Student currentStudent = db.findStudent(uid);
-
-            if (currentTeacher != null && currentTeacher.verifyPassword(pwd)) {
+            if (uid.equals("admin") && pwd.equals("admin123")) {
+                System.out.println("\n👑 管理員 登入成功！");
+                runAdminMenu(scanner, system);
+            } else if (currentTeacher != null && currentTeacher.verifyPassword(pwd)) {
                 System.out.println("\n 教授 登入成功！" + currentTeacher.getName());
                 runTeacherMenu(scanner, system, currentTeacher);
             } else if (currentStudent != null && currentStudent.verifyPassword(pwd)) {
@@ -200,6 +202,25 @@ public class ConsoleTester {
             } else {
                 System.out.println(" 無效的選項。");
             }
+        }
+    }
+    // =================管理員介面=================
+    private static void runAdminMenu(Scanner scanner, RegistrationSystem system) {
+        while (true) {
+            System.out.println("\n=== 👑 系統管理員控制台 ===");
+            System.out.println("目前的系統狀態: [" + system.getCurrentPhase() + "]");
+            System.out.println("1. 切換為：系統關閉 (CLOSED)");
+            System.out.println("2. 切換為：初選期 (PRE_ENROLL)");
+            System.out.println("3. 切換為：加退選期 (ADD_DROP)");
+            System.out.println("4. 登出");
+            System.out.print("請選擇操作: ");
+
+            String choice = scanner.nextLine();
+            if (choice.equals("1")) system.setCurrentPhase(RegistrationSystem.SystemPhase.CLOSED);
+            else if (choice.equals("2")) system.setCurrentPhase(RegistrationSystem.SystemPhase.PRE_ENROLL);
+            else if (choice.equals("3")) system.setCurrentPhase(RegistrationSystem.SystemPhase.ADD_DROP);
+            else if (choice.equals("4")) break;
+            else System.out.println(" 無效的選項。");
         }
     }
 }

@@ -1,10 +1,20 @@
 public class RegistrationSystem {
-    // 系統底層依賴的三大專責模組
+    // 系統底層依賴的四大專責模組
     private CourseManager courseManager;
     private GradeManager gradeManager;
     private LotteryManager lotteryManager;
     private SqliteDatabase database;
+    
+    // 1. 定義系統的四種狀態
+    public enum SystemPhase {
+        CLOSED,       // 系統關閉 (只能看課表)
+        PRE_ENROLL,   // 初選期 (只能登記抽籤)
+        LOTTERY_RUN,  // 抽籤分發中 (暫停所有操作)
+        ADD_DROP      // 加退選期 (可以退選、密碼卡加簽)
+    }
 
+    // 2. 新增一個變數記錄現在的狀態 (預設為關閉)
+    private SystemPhase currentPhase = SystemPhase.CLOSED;
     // 建構子：在系統通電啟動時，把各個次模組實體化並接好線
     public RegistrationSystem(SqliteDatabase database) {
         this.database = database;
@@ -12,6 +22,27 @@ public class RegistrationSystem {
         this.gradeManager = new GradeManager(database);
         this.lotteryManager = new LotteryManager(database);
     }
+
+    // 3. 開放給 Admin 切換時段的方法
+    public void setCurrentPhase(SystemPhase phase) {
+        this.currentPhase = phase;
+        System.out.println("📢 系統廣播：目前選課階段已切換為 [" + phase + "]");
+    }
+    
+    public SystemPhase getCurrentPhase() {
+        return this.currentPhase;
+    }
+
+    
+
+
+    
+    /*public RegistrationSystem(SqliteDatabase database) {
+        this.database = database;
+        this.courseManager = new CourseManager(database);
+        this.gradeManager = new GradeManager(database);
+        this.lotteryManager = new LotteryManager(database);
+    }*/
 
     // ----------------------------------------------------
     // 對外開放的 API 接口 (前端 Controller 只會跟這個類別溝通)
@@ -28,6 +59,9 @@ public class RegistrationSystem {
     }
     ////////////////
     public void registerForLottery(Student student, Course course) throws Exception {
+        if (this.currentPhase != SystemPhase.PRE_ENROLL) {
+            throw new Exception("⛔ 目前不是「初選登記」時段，無法登記抽籤！");
+        }
         lotteryManager.registerIntent(student, course);
     }
     ////////////////
@@ -45,9 +79,11 @@ public class RegistrationSystem {
     public void runLotterySystem() {
         lotteryManager.executeAllLotteries(this.database.getAllCourses()); 
     }
-    
-    // 密碼卡強制加簽功能
+    //密碼卡強制加簽功能
     public void forceEnrollWithPassword(Student student, Course course, String inputCode) throws Exception {
+        if (this.currentPhase != SystemPhase.ADD_DROP) {
+            throw new Exception("⛔ 目前不是「加退選」時段，無法使用密碼卡！");
+        }
         String correctCode = course.getAuthCode();
         
         // 1. 檢查這門課有沒有開放密碼卡

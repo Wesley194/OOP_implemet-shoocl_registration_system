@@ -11,8 +11,8 @@ import java.util.HashMap;
 
 
 public class SqliteDatabase {
-
-    private static final String DB_URL = "jdbc:sqlite:school_system.db";
+    private static final String DB_URL = "jdbc:sqlite:test_my_system.db";
+    //private static final String DB_URL = "jdbc:sqlite:school_system.db";
     private Connection connection;
 
     public SqliteDatabase() {
