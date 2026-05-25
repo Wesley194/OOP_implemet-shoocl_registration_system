@@ -6,7 +6,7 @@ public class CourseManager {
     }
 
     // 加上 throws Exception 讓錯誤訊息可以傳給前端
-    public void createCourse(Teacher teacher, String courseId, String courseName, int credits, int maxCapacity, TimeSlot time) throws Exception {
+    public void createCourse(Teacher teacher, String courseId, String courseName, int credits, int maxCapacity, TimeSlot time,String authCode) throws Exception {
         
         // 防呆 1: 檢查課號是否重複
         for (Course c : database.getAllCourses()) {
@@ -40,6 +40,7 @@ public class CourseManager {
 
         // 所有檢查皆通過，正式建立並指派課程
         Course newCourse = new Course(courseId, courseName, credits, maxCapacity, time, teacher);
+        newCourse.setAuthCode(authCode);
         teacher.assignCourse(newCourse);
         database.addCourseToSystem(newCourse);
 

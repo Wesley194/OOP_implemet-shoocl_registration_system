@@ -258,8 +258,12 @@ public class MainGUI extends JFrame {
         
         enrollPanel.add(new JScrollPane(allCoursesTable), BorderLayout.CENTER);
         
-        JButton btnEnroll = new JButton("確認選取該課程");
-        enrollPanel.add(btnEnroll, BorderLayout.SOUTH);
+        JPanel bottomActionPanel = new JPanel();
+        JButton btnEnroll = new JButton("登記抽籤 (一般選課)");
+        JButton btnForceEnroll = new JButton(" 密碼卡加簽");
+        bottomActionPanel.add(btnEnroll);
+        bottomActionPanel.add(btnForceEnroll);
+        enrollPanel.add(bottomActionPanel, BorderLayout.SOUTH);
 
         btnEnroll.addActionListener(e -> {
             int row = allCoursesTable.getSelectedRow();
@@ -276,6 +280,33 @@ public class MainGUI extends JFrame {
                 refreshStudentView(); // 選課成功後立即重整畫面
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, ex.getMessage(), "選課失敗", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        // 密碼卡加簽按鈕的邏輯
+        btnForceEnroll.addActionListener(e -> {
+            int row = allCoursesTable.getSelectedRow();
+            if (row == -1) {
+                JOptionPane.showMessageDialog(this, "請先在表格中點選一門要加簽的課程！", "提示", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            Course selectedCourse = db.getAllCourses().get(row);
+            
+            // 彈出對話框，請學生輸入密碼
+            String inputCode = JOptionPane.showInputDialog(this, 
+                "請輸入 [" + selectedCourse.getCourseName() + "] 的加簽密碼：\n(若無密碼請按取消)", 
+                "密碼卡強制加簽", 
+                JOptionPane.QUESTION_MESSAGE);
+            
+            // 如果學生按了取消，inputCode 會是 null；如果有輸入文字，就去檢查
+            if (inputCode != null && !inputCode.trim().isEmpty()) {
+                try {
+                    // 呼叫我們剛剛在系統大腦寫好的外掛技能
+                    system.forceEnrollWithPassword(currentStudent, selectedCourse, inputCode.trim());
+                    JOptionPane.showMessageDialog(this, "🎉 加簽成功！您已使用密碼卡強制加入該課程！");
+                    refreshStudentView(); // 重整畫面，課表馬上出現！
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(this, ex.getMessage(), "加簽失敗", JOptionPane.ERROR_MESSAGE);
+                }
             }
         });
 
@@ -382,7 +413,7 @@ public class MainGUI extends JFrame {
 
         // ====== 分頁 1：新增課程 ======
         JPanel addCoursePanel = new JPanel(new GridBagLayout()); 
-        JPanel formPanel = new JPanel(new GridLayout(4, 4, 10, 10));
+        JPanel formPanel = new JPanel(new GridLayout(5, 5, 10, 10));
         formPanel.setBorder(BorderFactory.createTitledBorder("開設新課程"));
 
         JTextField txtCode = new JTextField(10);
@@ -392,7 +423,7 @@ public class MainGUI extends JFrame {
         JTextField txtStart = new JTextField(10);
         JTextField txtEnd = new JTextField(10);
         JTextField txtCapacity = new JTextField("50");
-
+        JTextField txtAuthCode = new JTextField(10);
 
         formPanel.add(new JLabel("課程代碼 (例 CS103):")); formPanel.add(txtCode);
         formPanel.add(new JLabel("課程名稱:")); formPanel.add(txtName);
@@ -401,6 +432,7 @@ public class MainGUI extends JFrame {
         formPanel.add(new JLabel("開始節次 (例如 2):")); formPanel.add(txtStart);
         formPanel.add(new JLabel("結束節次 (例如 4):")); formPanel.add(txtEnd);
         formPanel.add(new JLabel("人數上限 (預設50):")); formPanel.add(txtCapacity);
+        formPanel.add(new JLabel("加簽密碼(不開放請留白):")); formPanel.add(txtAuthCode);
 
         JButton btnAddCourse = new JButton("確認開課");
         formPanel.add(new JLabel("")); formPanel.add(btnAddCourse);
@@ -410,6 +442,7 @@ public class MainGUI extends JFrame {
         btnAddCourse.addActionListener(e -> {
             String code = txtCode.getText().trim();
             String name = txtName.getText().trim();
+            String authCode = txtAuthCode.getText().trim();
             String creditsStr = txtCredits.getText().trim();
             String dayStr = txtDay.getText().trim();
             String startStr = txtStart.getText().trim();
@@ -430,14 +463,15 @@ public class MainGUI extends JFrame {
 
                 TimeSlot time = new TimeSlot(day, start, end);
 
-                system.createCourse(currentTeacher, code, name, credits, maxCapacity, time);
+                system.createCourse(currentTeacher, code, name, credits, maxCapacity, time, authCode);
 
                 JOptionPane.showMessageDialog(teacherPanel, " 課程 [" + name + "] 新增成功！");
                 
                 // 清空輸入框
                 txtCode.setText(""); txtName.setText(""); txtCredits.setText("");
                 txtDay.setText(""); txtStart.setText(""); txtEnd.setText("");
-                
+                txtCapacity.setText("50");
+                txtAuthCode.setText("");
                 // 開課成功後，刷新下拉選單，讓成績分頁馬上能看到新課！
                 refreshTeacherView(); 
             } catch (NumberFormatException ex) {

@@ -44,7 +44,7 @@ public class SqliteDatabase {
         if (connection == null) return;
         String createTeachersTable = "CREATE TABLE IF NOT EXISTS teachers (uid TEXT PRIMARY KEY, name TEXT NOT NULL, password TEXT NOT NULL);";
         String createStudentsTable = "CREATE TABLE IF NOT EXISTS students (uid TEXT PRIMARY KEY, name TEXT NOT NULL, password TEXT NOT NULL);";
-        String createCoursesTable = "CREATE TABLE IF NOT EXISTS courses (course_id TEXT PRIMARY KEY, course_name TEXT NOT NULL, credits INTEGER NOT NULL, max_capacity INTEGER NOT NULL DEFAULT 50, day_of_week INTEGER NOT NULL, start_period INTEGER NOT NULL, end_period INTEGER NOT NULL, teacher_id TEXT NOT NULL, FOREIGN KEY (teacher_id) REFERENCES teachers(uid) ON UPDATE CASCADE ON DELETE RESTRICT);";
+        String createCoursesTable = "CREATE TABLE IF NOT EXISTS courses (course_id TEXT PRIMARY KEY, course_name TEXT NOT NULL, credits INTEGER NOT NULL, max_capacity INTEGER NOT NULL DEFAULT 50, day_of_week INTEGER NOT NULL, start_period INTEGER NOT NULL, end_period INTEGER NOT NULL, auth_code TEXT, teacher_id TEXT NOT NULL, FOREIGN KEY (teacher_id) REFERENCES teachers(uid) ON UPDATE CASCADE ON DELETE RESTRICT);";
         String createEnrollmentsTable = "CREATE TABLE IF NOT EXISTS enrollments (student_id TEXT, course_id TEXT, score REAL, PRIMARY KEY (student_id, course_id), FOREIGN KEY (student_id) REFERENCES students(uid) ON UPDATE CASCADE ON DELETE CASCADE, FOREIGN KEY (course_id) REFERENCES courses(course_id) ON UPDATE CASCADE ON DELETE CASCADE);";
         //等待抽籤登記表(下方)
         String createPendingTable = "CREATE TABLE IF NOT EXISTS pending_enrollments (student_id TEXT, course_id TEXT, PRIMARY KEY (student_id, course_id));";
@@ -130,7 +130,7 @@ public class SqliteDatabase {
 
     // 新增課程 (INSERT)
     public void addCourseToSystem(Course c) {
-        String sql = "INSERT INTO courses (course_id, course_name, credits, max_capacity, day_of_week, start_period, end_period, teacher_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO courses (course_id, course_name, credits, max_capacity, day_of_week, start_period, end_period, auth_code, teacher_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, c.getCourseId());
@@ -142,9 +142,9 @@ public class SqliteDatabase {
             pstmt.setInt(5, c.getTimeSlot().getDayOfWeek());
             pstmt.setInt(6, c.getTimeSlot().getStartPeriod());
             pstmt.setInt(7, c.getTimeSlot().getEndPeriod());
-            
+            pstmt.setString(8, c.getAuthCode());
             // 把 Teacher 物件轉換成 uid 字串存入 (這就是 Foreign Key 外鍵)
-            pstmt.setString(8, c.getTeacher().getUid());
+            pstmt.setString(9, c.getTeacher().getUid());
             
             pstmt.executeUpdate();
             System.out.println("課程 [" + c.getCourseName() + "] 已成功開課並寫入資料庫！");
@@ -186,6 +186,7 @@ public class SqliteDatabase {
                 
                 // 3. 把所有零件組裝回 Course 物件，並加入到 List 裡
                 Course course = new Course(cId, cName, credits, maxCap, ts, t);
+                course.setAuthCode(rs.getString("auth_code"));
                 loadEnrolledStudentsForCourse(course);
                 loadPendingStudentsForCourse(course);
                 courseList.add(course);

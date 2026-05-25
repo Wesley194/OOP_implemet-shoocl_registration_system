@@ -7,7 +7,7 @@ public class ConsoleTester {
         // 系統初始化
         SqliteDatabase db = new SqliteDatabase();
         RegistrationSystem system = new RegistrationSystem(db);
-
+        
         // 啟動終端機
         Scanner scanner = new Scanner(System.in);
         System.out.println("=== 學校行政管理系統 ===");
@@ -60,10 +60,11 @@ public class ConsoleTester {
                 int start = Integer.parseInt(scanner.nextLine());
                 System.out.print("結束節次 (例如 4): ");
                 int end = Integer.parseInt(scanner.nextLine());
-                
+                System.out.print("加簽密碼 (不開放請直接按 Enter): ");
+                String authCode = scanner.nextLine();
                 TimeSlot time = new TimeSlot(day, start, end); 
                 try {
-                    system.createCourse(teacher, courseId, courseName, credits, 50, time);
+                   system.createCourse(teacher, courseId, courseName, credits, 50, time, authCode);
                     System.out.println("✅ 課程 [" + courseName + "] 新增成功！");
                 } catch (Exception e) {
                     System.out.println("❌ " + e.getMessage());
