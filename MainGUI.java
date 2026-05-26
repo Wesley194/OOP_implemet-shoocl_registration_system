@@ -19,6 +19,7 @@ public class MainGUI extends JFrame {
     private JPanel registerPanel = new JPanel();
     private JPanel studentPanel = new JPanel();
     private JPanel teacherPanel = new JPanel();
+    private JPanel adminPanel = new JPanel();
 
     // --- 目前登入的使用者 ---
     private Student currentStudent;
@@ -34,6 +35,7 @@ public class MainGUI extends JFrame {
     private SchedulePanel studentSchedulePanel = new SchedulePanel();
     private SchedulePanel teacherSchedulePanel = new SchedulePanel();
     private JLabel lblTeacherWelcome = new JLabel();
+    private JLabel lblAdminStatus = new JLabel();
 
     public MainGUI() {
 
@@ -58,11 +60,12 @@ public class MainGUI extends JFrame {
         buildStudentPanel();
         buildRegisterPanel();
         buildTeacherPanel();
+        buildAdminPanel();
 
         mainContainer.add(loginPanel, "LoginCard");
-        mainContainer.add(registerPanel, "RegisterCard");
         mainContainer.add(studentPanel, "StudentCard");
         mainContainer.add(teacherPanel, "TeacherCard");
+        mainContainer.add(adminPanel, "AdminCard");
 
         add(mainContainer);
 
@@ -120,7 +123,6 @@ public class MainGUI extends JFrame {
             Teacher t = db.findTeacher(uid);
             Student s = db.findStudent(uid);
 
-
             if (t != null && t.verifyPassword(pwd)) {
                 // 把資料庫裡屬於這位老師的課都拿出來
                 List<Course> allCourses = db.getAllCourses();
@@ -156,7 +158,8 @@ public class MainGUI extends JFrame {
             } /*else if (a != null && a.verifyPassword(pwd)) {
                 JOptionPane.showMessageDialog(this, "管理員登入成功！");
                 txtId.setText(""); txtPwd.setText(""); // 清空輸入框
-                cardLayout.show(mainContainer, "RegisterCard");
+                refreshAdminView();
+                cardLayout.show(mainContainer, "AdminCard");
             }*/ else {
                 JOptionPane.showMessageDialog(this, "帳號或密碼錯誤！", "登入失敗", JOptionPane.ERROR_MESSAGE);
             }
@@ -177,16 +180,14 @@ public class MainGUI extends JFrame {
         JLabel lblPwd = new JLabel("密碼:");
         JPasswordField txtPwd = new JPasswordField(15);
         JButton btnRegister = new JButton("確認註冊");
-        JButton btnBack = new JButton("返回登入");
         formPanel.add(lblRole); formPanel.add(comboRole);
         formPanel.add(lblId);   formPanel.add(txtId);
         formPanel.add(lblName); formPanel.add(txtName);
         formPanel.add(lblPwd);  formPanel.add(txtPwd);
-        formPanel.add(btnBack); formPanel.add(btnRegister);
+        formPanel.add(new JLabel("")); 
+        formPanel.add(btnRegister);
         registerPanel.add(formPanel);
-        btnBack.addActionListener(e -> {
-            cardLayout.show(mainContainer, "LoginCard");
-        });
+        
         btnRegister.addActionListener(e -> {
             String role = (String) comboRole.getSelectedItem();
             String uid = txtId.getText().trim();
@@ -211,7 +212,6 @@ public class MainGUI extends JFrame {
             }
             JOptionPane.showMessageDialog(this, "註冊成功！");
             txtId.setText(""); txtName.setText(""); txtPwd.setText("");
-            cardLayout.show(mainContainer, "LoginCard");
         });
     }
 
@@ -386,7 +386,7 @@ public class MainGUI extends JFrame {
         for (Course c : currentStudent.getMyCourses()) {
             totalCredits += c.getCredits();
         }
-        lblStudentWelcome.setText("學生：" + currentStudent.getName() + " (" + currentStudent.getUid() + ") | 總學分數: " + totalCredits + " | 目前 GPA: " + system.calculateGPA(currentStudent));
+        lblStudentWelcome.setText("學生：" + currentStudent.getName() + " (" + currentStudent.getUid() + ") | 總學分數: " + totalCredits + " | 目前 GPA: " + system.calculateGPA(currentStudent) + " | 目前階段: " + system.getCurrentPhase());
         
         // 更新全校課程
         allCoursesModel.setRowCount(0);
@@ -606,7 +606,7 @@ public class MainGUI extends JFrame {
 
     private void refreshTeacherView() {
         if (currentTeacher == null) return;
-        lblTeacherWelcome.setText("教授：" + currentTeacher.getName() + " 您好！");
+        lblTeacherWelcome.setText("教授：" + currentTeacher.getName() + " 您好！ | 目前階段: " + system.getCurrentPhase());
 
         // 更新下拉選單中的課程
         courseComboBox.removeAllItems();
@@ -639,6 +639,54 @@ public class MainGUI extends JFrame {
                 studentsTableModel.addRow(new Object[]{s.getUid(), s.getName(), scoreDisplay});
             }
         }
+    }
+
+    // ==================== 管理員畫面 ====================
+    private void buildAdminPanel() {
+        adminPanel.setLayout(new BorderLayout());
+        // --- 上方：歡迎標語與登出按鈕 ---
+        JPanel topPanel = new JPanel(new BorderLayout());
+        lblAdminStatus.setFont(new Font("微軟正黑體", Font.BOLD, 18));
+        lblAdminStatus.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        topPanel.add(lblAdminStatus, BorderLayout.WEST);
+        JButton btnLogout = new JButton("登出");
+        btnLogout.addActionListener(e -> {
+            cardLayout.show(mainContainer, "LoginCard");
+        });
+        topPanel.add(btnLogout, BorderLayout.EAST);
+        adminPanel.add(topPanel, BorderLayout.NORTH);
+        // --- 中間：控制台按鈕 ---
+        JPanel controlPanel = new JPanel(new GridLayout(3, 1, 20, 20));
+        controlPanel.setBorder(BorderFactory.createEmptyBorder(50, 150, 50, 150));
+        JButton btnClosed = new JButton("切換為：系統關閉 (CLOSED)");
+        JButton btnPreEnroll = new JButton("切換為：初選期 (PRE_ENROLL)");
+        JButton btnAddDrop = new JButton("切換為：加退選期 (ADD_DROP)");
+        btnClosed.addActionListener(e -> {
+            system.setCurrentPhase(RegistrationSystem.SystemPhase.CLOSED);
+            refreshAdminView();
+            JOptionPane.showMessageDialog(this, "已切換為系統關閉狀態！");
+        });
+        btnPreEnroll.addActionListener(e -> {
+            system.setCurrentPhase(RegistrationSystem.SystemPhase.PRE_ENROLL);
+            refreshAdminView();
+            JOptionPane.showMessageDialog(this, "已切換為初選期狀態！");
+        });
+        btnAddDrop.addActionListener(e -> {
+            system.setCurrentPhase(RegistrationSystem.SystemPhase.ADD_DROP);
+            refreshAdminView();
+            JOptionPane.showMessageDialog(this, "已切換為加退選期狀態！");
+        });
+        controlPanel.add(btnClosed);
+        controlPanel.add(btnPreEnroll);
+        controlPanel.add(btnAddDrop);
+        // 使用分頁來整合控制台與註冊畫面
+        JTabbedPane adminTabbedPane = new JTabbedPane();
+        adminTabbedPane.addTab("系統狀態控制台", controlPanel);
+        adminTabbedPane.addTab("註冊新帳號", registerPanel);
+        adminPanel.add(adminTabbedPane, BorderLayout.CENTER);
+    }
+    private void refreshAdminView() {
+        lblAdminStatus.setText("系統管理員控制台 | 目前狀態: " + system.getCurrentPhase());
     }
 
     // ==================== 程式執行起點 ====================
