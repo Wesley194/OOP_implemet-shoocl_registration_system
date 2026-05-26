@@ -216,9 +216,9 @@ public class ConsoleTester {
             System.out.print("請選擇操作: ");
 
             String choice = scanner.nextLine();
-            if (choice.equals("1")) system.setCurrentPhase(RegistrationSystem.SystemPhase.CLOSED);
-            else if (choice.equals("2")) system.setCurrentPhase(RegistrationSystem.SystemPhase.PRE_ENROLL);
-            else if (choice.equals("3")) system.setCurrentPhase(RegistrationSystem.SystemPhase.ADD_DROP);
+            if (choice.equals("1")) system.setCurrentPhase(SystemStateManager.SystemPhase.CLOSED);
+            else if (choice.equals("2")) system.setCurrentPhase(SystemStateManager.SystemPhase.PRE_ENROLL);
+            else if (choice.equals("3")) system.setCurrentPhase(SystemStateManager.SystemPhase.ADD_DROP);
             else if (choice.equals("4")) break;
             else System.out.println(" 無效的選項。");
         }
