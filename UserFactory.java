@@ -5,6 +5,8 @@ public class UserFactory {
             return new Student(uid, name, password);
         } else if (role.equalsIgnoreCase("Teacher")) {
             return new Teacher(uid, name, password);
+        } else if (role.equalsIgnoreCase("Admin")) {
+            return new Admin(uid, name, password);
         }
         throw new IllegalArgumentException("未知的角色類型");
     }

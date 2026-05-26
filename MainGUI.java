@@ -119,7 +119,7 @@ public class MainGUI extends JFrame {
                 return;
             }
 
-            //Admin a = db.findAdmin(uid); // 管理員
+            Admin a = db.findAdmin(uid); // 管理員
             Teacher t = db.findTeacher(uid);
             Student s = db.findStudent(uid);
 
@@ -155,12 +155,12 @@ public class MainGUI extends JFrame {
                 cardLayout.show(mainContainer, "StudentCard");
                 txtId.setText(""); txtPwd.setText(""); // 清空輸入框
 
-            } /*else if (a != null && a.verifyPassword(pwd)) {
+            } else if (a != null && a.verifyPassword(pwd)) {
                 JOptionPane.showMessageDialog(this, "管理員登入成功！");
                 txtId.setText(""); txtPwd.setText(""); // 清空輸入框
                 refreshAdminView();
                 cardLayout.show(mainContainer, "AdminCard");
-            }*/ else {
+            } else {
                 JOptionPane.showMessageDialog(this, "帳號或密碼錯誤！", "登入失敗", JOptionPane.ERROR_MESSAGE);
             }
         });
