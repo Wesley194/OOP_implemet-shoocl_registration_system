@@ -431,32 +431,46 @@ public class MainGUI extends JFrame {
         JTabbedPane tabbedPane = new JTabbedPane();
 
         // ====== 分頁 1：新增課程 ======
-        JPanel addCoursePanel = new JPanel(new GridBagLayout()); 
-        JPanel formPanel = new JPanel(new GridLayout(5, 5, 10, 10));
+        JPanel formContainer = new JPanel(new GridBagLayout());
+        JPanel formPanel = new JPanel(new BorderLayout(0, 15));
         formPanel.setBorder(BorderFactory.createTitledBorder("開設新課程"));
 
-        JTextField txtCode = new JTextField(10);
-        JTextField txtName = new JTextField(10);
-        JTextField txtCredits = new JTextField(10);
-        JTextField txtDay = new JTextField(10);
-        JTextField txtStart = new JTextField(10);
-        JTextField txtEnd = new JTextField(10);
-        JTextField txtCapacity = new JTextField("50");
-        JTextField txtAuthCode = new JTextField(10);
+        JPanel fieldsPanel = new JPanel(new GridLayout(8, 2, 10, 10));
 
-        formPanel.add(new JLabel("課程代碼 (例 CS103):")); formPanel.add(txtCode);
-        formPanel.add(new JLabel("課程名稱:")); formPanel.add(txtName);
-        formPanel.add(new JLabel("學分數:")); formPanel.add(txtCredits);
-        formPanel.add(new JLabel("上課星期 (1~5):")); formPanel.add(txtDay);
-        formPanel.add(new JLabel("開始節次 (例如 2):")); formPanel.add(txtStart);
-        formPanel.add(new JLabel("結束節次 (例如 4):")); formPanel.add(txtEnd);
-        formPanel.add(new JLabel("人數上限 (預設50):")); formPanel.add(txtCapacity);
-        formPanel.add(new JLabel("加簽密碼(不開放請留白):")); formPanel.add(txtAuthCode);
+        JTextField txtCode = new JTextField(12);
+        JTextField txtName = new JTextField(12);
+        JTextField txtCredits = new JTextField(12);
+        JTextField txtDay = new JTextField(12);
+        JTextField txtStart = new JTextField(12);
+        JTextField txtEnd = new JTextField(12);
+        JTextField txtCapacity = new JTextField("50", 12);
+        JTextField txtAuthCode = new JTextField(12);
+        fieldsPanel.add(new JLabel("課程代碼 (例 CS103):"));
+        fieldsPanel.add(txtCode);
+        fieldsPanel.add(new JLabel("課程名稱:"));
+        fieldsPanel.add(txtName);
+        fieldsPanel.add(new JLabel("學分數:"));
+        fieldsPanel.add(txtCredits);
+        fieldsPanel.add(new JLabel("上課星期 (1~5):"));
+        fieldsPanel.add(txtDay);
+        fieldsPanel.add(new JLabel("開始節次 (例如 2):"));
+        fieldsPanel.add(txtStart);
+        fieldsPanel.add(new JLabel("結束節次 (例如 4):"));
+        fieldsPanel.add(txtEnd);
+        fieldsPanel.add(new JLabel("人數上限 (預設50):"));
+        fieldsPanel.add(txtCapacity);
+        fieldsPanel.add(new JLabel("加簽密碼(不開放請留白):"));
+        fieldsPanel.add(txtAuthCode);
+        formPanel.add(fieldsPanel, BorderLayout.CENTER);
+        JPanel buttonPanel = new JPanel(); // 預設置中的 FlowLayout
 
         JButton btnAddCourse = new JButton("確認開課");
-        formPanel.add(new JLabel("")); formPanel.add(btnAddCourse);
+        buttonPanel.add(btnAddCourse);
+        formPanel.add(buttonPanel, BorderLayout.SOUTH);
 
-        
+        formContainer.add(formPanel);
+        JScrollPane addCoursePanel = new JScrollPane(formContainer);
+        addCoursePanel.setBorder(BorderFactory.createEmptyBorder());        
 
         btnAddCourse.addActionListener(e -> {
             String code = txtCode.getText().trim();
@@ -499,7 +513,6 @@ public class MainGUI extends JFrame {
                 JOptionPane.showMessageDialog(teacherPanel, ex.getMessage(), "開課失敗", JOptionPane.ERROR_MESSAGE);
             }
         });
-        addCoursePanel.add(formPanel); // 將表單加入分頁
 
         // ====== 分頁 2：登記成績 ======
         JPanel gradePanel = new JPanel(new BorderLayout());

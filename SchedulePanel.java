@@ -106,9 +106,9 @@ public class SchedulePanel extends JPanel {
                 
                 String cellText;
                 if (showTeacherName) {
-                    cellText = "<html><center>" + c.getCourseName() + "<br>" + c.getCourseId() + "<br>" + c.getTeacher().getName() + "<br>" + c.getTimeSlot().toString() + "</center></html>";
+                    cellText = "<html><center>" + c.getCourseName() + "<br>" + c.getCourseId() + "<br>" + c.getTeacher().getName() + "<br>" + c.getCredits() + "學分" + "<br>" + c.getTimeSlot().toString() + "</center></html>";
                 } else {
-                    cellText = "<html><center>" + c.getCourseName() + "<br>" + c.getCourseId() + "<br>" + c.getTimeSlot().toString() + "</center></html>";
+                    cellText = "<html><center>" + c.getCourseName() + "<br>" + c.getCourseId() + "<br>" + c.getCredits() + "學分" + "<br>" + c.getTimeSlot().toString() + "</center></html>";
                 }
 
                 for (int period = start; period <= end; period++) {
