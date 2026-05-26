@@ -23,7 +23,7 @@ public class SpecialEnrollmentManager {
             throw new Exception("⛔ 你已經選上這門課了，不需要再加簽囉！");
         }
 
-        // 🌟 4. 補上同學點出的 Bug：檢查衝堂 (直接呼叫 Student 內建的方法)
+
         if (student.hasTimeConflict(course)) {
             throw new TimeConflictException("⛔ 加簽失敗：與您目前的課表衝堂！");
         }
