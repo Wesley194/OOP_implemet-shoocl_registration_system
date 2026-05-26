@@ -261,7 +261,9 @@ public class MainGUI extends JFrame {
         JPanel bottomActionPanel = new JPanel();
         JButton btnEnroll = new JButton("登記抽籤 (一般選課)");
         JButton btnForceEnroll = new JButton(" 密碼卡加簽");
+        JButton btnCancelPending = new JButton("取消登記");
         bottomActionPanel.add(btnEnroll);
+        bottomActionPanel.add(btnCancelPending);
         bottomActionPanel.add(btnForceEnroll);
         enrollPanel.add(bottomActionPanel, BorderLayout.SOUTH);
 
@@ -280,6 +282,23 @@ public class MainGUI extends JFrame {
                 refreshStudentView(); // 選課成功後立即重整畫面
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, ex.getMessage(), "選課失敗", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        btnCancelPending.addActionListener(e -> {
+            int row = allCoursesTable.getSelectedRow();
+            if (row == -1) {
+                JOptionPane.showMessageDialog(this, "請先在表格中點選一門想取消的課程！", "提示", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            Course selectedCourse = db.getAllCourses().get(row);
+            
+            try {
+                // 直接呼叫系統的退選功能，後端大腦會自動判斷它是「正式退選」還是「取消登記」
+                system.cancelPendingCourse(currentStudent, selectedCourse);
+                JOptionPane.showMessageDialog(this, "✅ 取消登記成功！");
+                refreshStudentView(); // 重整畫面
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, ex.getMessage(), "操作失敗", JOptionPane.ERROR_MESSAGE);
             }
         });
         // 密碼卡加簽按鈕的邏輯
@@ -348,7 +367,7 @@ public class MainGUI extends JFrame {
             int confirm = JOptionPane.showConfirmDialog(this, "確定要退選 [" + selectedCourse.getCourseName() + "] 嗎？", "退選確認", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
                 try {
-                    system.dropCourse(currentStudent, selectedCourse);
+                    system.dropEnrolledCourse(currentStudent, selectedCourse);
                     JOptionPane.showMessageDialog(this, "退選成功！");
                     refreshStudentView(); // 重整畫面
                 } catch (Exception ex) {

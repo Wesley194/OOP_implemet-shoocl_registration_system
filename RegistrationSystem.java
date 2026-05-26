@@ -4,6 +4,7 @@ public class RegistrationSystem {
     private GradeManager gradeManager;
     private LotteryManager lotteryManager;
     private SqliteDatabase database;
+    private EnrollmentManager enrollmentManager;
     
     // 1. 定義系統的四種狀態
     public enum SystemPhase {
@@ -21,6 +22,7 @@ public class RegistrationSystem {
         this.courseManager = new CourseManager(database);
         this.gradeManager = new GradeManager(database);
         this.lotteryManager = new LotteryManager(database);
+        this.enrollmentManager = new EnrollmentManager(database);
     }
 
     // 3. 開放給 Admin 切換時段的方法
@@ -72,7 +74,26 @@ public class RegistrationSystem {
         return gradeManager.calculateGPA(student);
     }
     // 提供給 GUI 退選用
-    public void dropCourse(Student student, Course course) throws Exception {
+    public void cancelPendingCourse(Student student, Course course) throws Exception {
+        if (this.currentPhase != SystemPhase.PRE_ENROLL) {
+            throw new Exception("⛔ 目前不是初選期，無法取消登記！");
+        }
+        if (!course.getPendingStudents().contains(student)) {
+            throw new Exception("⛔ 您並未登記排隊這門課！");
+        }
+        
+        // 檢查通過，交給底層去刪除
+        lotteryManager.dropCourse(student, course); 
+    }
+    public void dropEnrolledCourse(Student student, Course course) throws Exception {
+        if (this.currentPhase != SystemPhase.ADD_DROP) {
+            throw new Exception("⛔ 目前不是加退選期，無法辦理退選！");
+        }
+        if (!student.getMyCourses().contains(course)) {
+            throw new Exception("⛔ 您並未正式選修此課程，無法退選！");
+        }
+        
+        // 檢查通過，交給底層去刪除
         lotteryManager.dropCourse(student, course);
     }
     // 提供給 Admin 用
@@ -109,5 +130,17 @@ public class RegistrationSystem {
         // 5. 更新記憶體，讓畫面馬上看得到
         student.enrollInCourse(course);
         course.addStudent(student);
+    }
+    public void normalEnroll(Student student, Course course) throws Exception {
+        
+        // 1. 大腦只負責檢查時間 (最高權限)
+        if (this.currentPhase != SystemPhase.ADD_DROP) {
+            throw new Exception("⛔ 目前不是「加退選」時段，無法辦理一般加選！");
+        }
+
+        // 2. 剩下的資格檢查（滿員、衝堂、重複），全部交給專責經理處理！
+        enrollmentManager.enroll(student, course);
+        
+        System.out.println("✅ 一般加選成功！");
     }
 }
