@@ -83,16 +83,11 @@ public class MainGUI extends JFrame {
         JLabel lblPwd = new JLabel("密碼:");
         JPasswordField txtPwd = new JPasswordField(15);
         JButton btnLogin = new JButton("登入系統");
-        //JButton btnGoRegister = new JButton("註冊帳號");
-
-       
-
 
         formPanel.add(lblId);
         formPanel.add(txtId);
         formPanel.add(lblPwd);
         formPanel.add(txtPwd);
-        //formPanel.add(btnGoRegister);
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
@@ -104,11 +99,6 @@ public class MainGUI extends JFrame {
 
         // 綁定鍵盤的 Enter/Return 鍵到登入按鈕上
         this.getRootPane().setDefaultButton(btnLogin);
-
-        //註冊按鈕（已移除）
-        /*btnGoRegister.addActionListener(e -> {
-            cardLayout.show(mainContainer, "RegisterCard");
-        });*/
 
         // 登入按鈕邏輯
         btnLogin.addActionListener(e -> {
@@ -656,10 +646,11 @@ public class MainGUI extends JFrame {
         topPanel.add(btnLogout, BorderLayout.EAST);
         adminPanel.add(topPanel, BorderLayout.NORTH);
         // --- 中間：控制台按鈕 ---
-        JPanel controlPanel = new JPanel(new GridLayout(3, 1, 20, 20));
+        JPanel controlPanel = new JPanel(new GridLayout(4, 1, 20, 20));
         controlPanel.setBorder(BorderFactory.createEmptyBorder(50, 150, 50, 150));
         JButton btnClosed = new JButton("切換為：系統關閉 (CLOSED)");
         JButton btnPreEnroll = new JButton("切換為：初選期 (PRE_ENROLL)");
+        JButton btnLottery = new JButton("切換為：抽籤階段 (LOTTERY_RUN)");
         JButton btnAddDrop = new JButton("切換為：加退選期 (ADD_DROP)");
         btnClosed.addActionListener(e -> {
             system.setCurrentPhase(RegistrationSystem.SystemPhase.CLOSED);
@@ -676,13 +667,104 @@ public class MainGUI extends JFrame {
             refreshAdminView();
             JOptionPane.showMessageDialog(this, "已切換為加退選期狀態！");
         });
+        
+        btnLottery.addActionListener(e -> {
+            system.setCurrentPhase(RegistrationSystem.SystemPhase.LOTTERY_RUN);
+            refreshAdminView();
+            JOptionPane.showMessageDialog(this, "系統已切換至抽籤階段，即將開始全校抽籤！");
+            try {
+                system.runLotterySystem();
+                JOptionPane.showMessageDialog(this, "✅ 全校抽籤分發完成！");
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "抽籤過程發生錯誤: " + ex.getMessage(), "錯誤", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
         controlPanel.add(btnClosed);
         controlPanel.add(btnPreEnroll);
+        controlPanel.add(btnLottery);
         controlPanel.add(btnAddDrop);
-        // 使用分頁來整合控制台與註冊畫面
+        // --- 名單查看分頁 ---
+        JPanel userListPanel = new JPanel(new BorderLayout());
+        
+        String[] viewOptions = {"學生", "老師"};
+        JComboBox<String> comboViewRole = new JComboBox<>(viewOptions);
+        JPanel topBoxPanel = new JPanel();
+        topBoxPanel.add(new JLabel("請選擇要查看的名單："));
+        topBoxPanel.add(comboViewRole);
+        userListPanel.add(topBoxPanel, BorderLayout.NORTH);
+
+        String[] userCols = {"帳號/編號", "姓名", "密碼"};
+        DefaultTableModel userTableModel = new DefaultTableModel(userCols, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        JTable userTable = new JTable(userTableModel);
+        userTable.setRowHeight(25);
+        userTable.getTableHeader().setReorderingAllowed(false);
+        userListPanel.add(new JScrollPane(userTable), BorderLayout.CENTER);
+
+        comboViewRole.addActionListener(e -> {
+            userTableModel.setRowCount(0);
+            if ("學生".equals(comboViewRole.getSelectedItem())) {
+                List<Student> students = db.getAllStudents();
+                for (Student s : students) {
+                    userTableModel.addRow(new Object[]{s.getUid(), s.getName(), s.getPassword()});
+                }
+            } else {
+                List<Teacher> teachers = db.getAllTeachers();
+                for (Teacher t : teachers) {
+                    userTableModel.addRow(new Object[]{t.getUid(), t.getName(), t.getPassword()});
+                }
+            }
+        });
+        comboViewRole.setSelectedIndex(0); // 預設先載入學生
+
+        // --- 課程查看分頁 ---
+        JPanel courseListPanel = new JPanel(new BorderLayout());
+        
+        String[] courseCols = {"課程代碼", "課程名稱", "學分", "人數上限", "授課教師", "星期（節次）", "加簽密碼"};
+        DefaultTableModel courseTableModel = new DefaultTableModel(courseCols, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        JTable courseTable = new JTable(courseTableModel);
+        courseTable.setRowHeight(25);
+        courseTable.getTableHeader().setReorderingAllowed(false);
+        courseListPanel.add(new JScrollPane(courseTable), BorderLayout.CENTER);
+
+        // 使用分頁來整合控制台與註冊畫面、名單畫面
         JTabbedPane adminTabbedPane = new JTabbedPane();
         adminTabbedPane.addTab("系統狀態控制台", controlPanel);
         adminTabbedPane.addTab("註冊新帳號", registerPanel);
+        adminTabbedPane.addTab("查看全校師生名單", userListPanel);
+        adminTabbedPane.addTab("查看全校課程", courseListPanel);
+
+        // 加入監聽器，讓每次切換到這個分頁時都會重新抓取最新資料
+        adminTabbedPane.addChangeListener(e -> {
+            if (adminTabbedPane.getSelectedComponent() == userListPanel) {
+                // 重新觸發下拉選單的事件來更新表格
+                comboViewRole.setSelectedIndex(comboViewRole.getSelectedIndex());
+            } else if (adminTabbedPane.getSelectedComponent() == courseListPanel) {
+                // 重新抓取課程
+                courseTableModel.setRowCount(0);
+                List<Course> allCourses = db.getAllCourses();
+                for (Course c : allCourses) {
+                    String authCode = c.getAuthCode();
+                    if (authCode == null || authCode.trim().isEmpty()) authCode = "無";
+                    courseTableModel.addRow(new Object[]{
+                        c.getCourseId(), c.getCourseName(), c.getCredits(), 
+                        c.getMaxCapacity(), c.getTeacher().getName(), 
+                        c.getTimeSlot().toString(), authCode
+                    });
+                }
+            }
+        });
+
         adminPanel.add(adminTabbedPane, BorderLayout.CENTER);
     }
     private void refreshAdminView() {
