@@ -7,7 +7,7 @@ public class ConsoleTester {
         // 系統初始化
         SqliteDatabase db = new SqliteDatabase();
         RegistrationSystem system = new RegistrationSystem(db);
-        
+
         // 啟動終端機
         Scanner scanner = new Scanner(System.in);
         System.out.println("=== 學校行政管理系統 ===");
@@ -21,9 +21,11 @@ public class ConsoleTester {
 
             Teacher currentTeacher = db.findTeacher(uid);
             Student currentStudent = db.findStudent(uid);
-            if (uid.equals("admin") && pwd.equals("admin123")) {
-                System.out.println("\n👑 管理員 登入成功！");
-                runAdminMenu(scanner, system);
+            Admin currentAdmin = db.findAdmin(uid);
+
+            if (currentAdmin != null && currentAdmin.verifyPassword(pwd)) {
+                System.out.println("\n管理員 登入成功！");
+                runAdminMenu(scanner, system, db);
             } else if (currentTeacher != null && currentTeacher.verifyPassword(pwd)) {
                 System.out.println("\n 教授 登入成功！" + currentTeacher.getName());
                 runTeacherMenu(scanner, system, currentTeacher);
@@ -44,7 +46,7 @@ public class ConsoleTester {
             System.out.println("2. 查看開課清單與登記成績");
             System.out.println("3. 登出系統");
             System.out.print("請選擇功能: ");
-            
+
             String choice = scanner.nextLine();
 
             if (choice.equals("1")) {
@@ -55,7 +57,7 @@ public class ConsoleTester {
                 String courseName = scanner.nextLine();
                 System.out.print("學分數: ");
                 int credits = Integer.parseInt(scanner.nextLine());
-                
+
                 System.out.print("上課星期 (1~5): ");
                 int day = Integer.parseInt(scanner.nextLine());
                 System.out.print("開始節次 (例如 2): ");
@@ -64,9 +66,9 @@ public class ConsoleTester {
                 int end = Integer.parseInt(scanner.nextLine());
                 System.out.print("加簽密碼 (不開放請直接按 Enter): ");
                 String authCode = scanner.nextLine();
-                TimeSlot time = new TimeSlot(day, start, end); 
+                TimeSlot time = new TimeSlot(day, start, end);
                 try {
-                   system.createCourse(teacher, courseId, courseName, credits, 50, time, authCode);
+                    system.createCourse(teacher, courseId, courseName, credits, 50, time, authCode);
                     System.out.println("✅ 課程 [" + courseName + "] 新增成功！");
                 } catch (Exception e) {
                     System.out.println("❌ " + e.getMessage());
@@ -86,7 +88,7 @@ public class ConsoleTester {
                 }
                 System.out.print("請輸入要管理的課程編號 (例如 1): ");
                 int courseIndex = Integer.parseInt(scanner.nextLine()) - 1;
-                
+
                 if (courseIndex >= 0 && courseIndex < myCourses.size()) {
                     Course selectedCourse = myCourses.get(courseIndex);
                     manageCourseGrades(scanner, system, teacher, selectedCourse);
@@ -95,7 +97,7 @@ public class ConsoleTester {
                 }
             } else if (choice.equals("3")) {
                 System.out.println(" 登出成功。");
-                break; 
+                break;
             } else {
                 System.out.println(" 無效的選項。");
             }
@@ -161,18 +163,19 @@ public class ConsoleTester {
 
                 for (int i = 0; i < allCourses.size(); i++) {
                     Course c = allCourses.get(i);
-                    System.out.println((i + 1) + ". " + c.getCourseName() + " (代碼: " + c.getCourseId() + " | 老師: " + c.getTeacher().getName() + " | 時間: " + c.getTimeSlot() + ")");
+                    System.out.println((i + 1) + ". " + c.getCourseName() + " (代碼: " + c.getCourseId() + " | 老師: "
+                            + c.getTeacher().getName() + " | 時間: " + c.getTimeSlot() + ")");
                 }
-                
+
                 System.out.print("請輸入欲選修的課程編號 (輸入 0 返回): ");
                 int courseIndex = Integer.parseInt(scanner.nextLine()) - 1;
-                
+
                 if (courseIndex >= 0 && courseIndex < allCourses.size()) {
                     Course selectedCourse = allCourses.get(courseIndex);
-                    
+
                     // 這是升級過後的 try-catch 選課邏輯
                     try {
-                       // 【修改為新的抽籤登記方法】
+                        // 【修改為新的抽籤登記方法】
                         system.registerForLottery(student, selectedCourse);
                         System.out.println(" 登記成功！請等待抽籤結果。");
                     } catch (Exception e) {
@@ -191,7 +194,8 @@ public class ConsoleTester {
                     for (Course c : myCourses) {
                         Double score = grades.get(c);
                         String scoreDisplay = (score == null) ? "老師尚未評分" : score.toString() + " 分";
-                        System.out.println("- " + c.getCourseName() + " (" + c.getCredits() + "學分) | 成績: " + scoreDisplay);
+                        System.out.println(
+                                "- " + c.getCourseName() + " (" + c.getCredits() + "學分) | 成績: " + scoreDisplay);
                     }
                     System.out.println("===========================");
                     System.out.println(" 您目前的累計 GPA 為: " + system.calculateGPA(student));
@@ -204,23 +208,90 @@ public class ConsoleTester {
             }
         }
     }
+
     // =================管理員介面=================
-    private static void runAdminMenu(Scanner scanner, RegistrationSystem system) {
+    private static void runAdminMenu(Scanner scanner, RegistrationSystem system, SqliteDatabase db) {
         while (true) {
-            System.out.println("\n=== 👑 系統管理員控制台 ===");
+            System.out.println("\n===管理員功能選單===");
             System.out.println("目前的系統狀態: [" + system.getCurrentPhase() + "]");
-            System.out.println("1. 切換為：系統關閉 (CLOSED)");
-            System.out.println("2. 切換為：初選期 (PRE_ENROLL)");
-            System.out.println("3. 切換為：加退選期 (ADD_DROP)");
-            System.out.println("4. 登出");
+            System.out.println("1. 學期結束 (CLOSED)");
+            System.out.println("2. 初選開始 (PRE_ENROLL)");
+            System.out.println("3. 加退選開始 (ADD_DROP)");
+            System.out.println("4. 新增學生");
+            System.out.println("5. 新增教師");
+            System.out.println("6. 查看所有學生");
+            System.out.println("7. 查看所有教師");
+            System.out.println("8. 查看所有課程");
+            System.out.println("9. 抽籤階段 (LOTTERY_RUN)");
+            System.out.println("10. 登出");
             System.out.print("請選擇操作: ");
 
             String choice = scanner.nextLine();
-            if (choice.equals("1")) system.setCurrentPhase(SystemStateManager.SystemPhase.CLOSED);
-            else if (choice.equals("2")) system.setCurrentPhase(SystemStateManager.SystemPhase.PRE_ENROLL);
-            else if (choice.equals("3")) system.setCurrentPhase(SystemStateManager.SystemPhase.ADD_DROP);
-            else if (choice.equals("4")) break;
-            else System.out.println(" 無效的選項。");
+
+            if (choice.equals("1")) {
+                system.setCurrentPhase(SystemStateManager.SystemPhase.CLOSED);
+            } else if (choice.equals("2")) {
+                system.setCurrentPhase(SystemStateManager.SystemPhase.PRE_ENROLL);
+            } else if (choice.equals("3")) {
+                system.setCurrentPhase(SystemStateManager.SystemPhase.ADD_DROP);
+            } else if (choice.equals("9")) {
+                system.setCurrentPhase(SystemStateManager.SystemPhase.LOTTERY_RUN);
+            } else if (choice.equals("4")) {
+                System.out.print("輸入學生帳號: ");
+                String uid = scanner.nextLine();
+                System.out.print("輸入學生姓名: ");
+                String name = scanner.nextLine();
+                System.out.print("輸入學生密碼: ");
+                String password = scanner.nextLine();
+
+                Student s = new Student(uid, name, password);
+                db.registerStudent(s);
+            } else if (choice.equals("5")) {
+                System.out.print("輸入教師帳號: ");
+                String uid = scanner.nextLine();
+                System.out.print("輸入教師姓名: ");
+                String name = scanner.nextLine();
+                System.out.print("輸入教師密碼: ");
+                String password = scanner.nextLine();
+
+                Teacher t = new Teacher(uid, name, password);
+                db.registerTeacher(t);
+            } else if (choice.equals("6")) {
+                List<Student> students = db.getAllStudents();
+                System.out.println("\n=== 所有學生 ===");
+                if (students.isEmpty()) {
+                    System.out.println("目前沒有學生");
+                    continue;
+                }
+                for (Student s : students) {
+                    System.out.println(s.getUid() + " | " + s.getName());
+                }
+            } else if (choice.equals("7")) {
+                List<Teacher> teachers = db.getAllTeachers();
+                System.out.println("\n=== 所有教師 ===");
+                if (teachers.isEmpty()) {
+                    System.out.println("目前沒有教師");
+                    continue;
+                }
+                for (Teacher t : teachers) {
+                    System.out.println(t.getUid() + " | " + t.getName());
+                }
+            } else if (choice.equals("8")) {
+                List<Course> courses = db.getAllCourses();
+                System.out.println("\n=== 所有課程 ===");
+                if (courses.isEmpty()) {
+                    System.out.println("目前沒有課程");
+                    continue;
+                }
+                for (Course c : courses) {
+                    System.out.println(c.getCourseId() + " | " + c.getCourseName() + " | " + c.getTeacher().getName());
+                }
+            } else if (choice.equals("10")) {
+                System.out.println(" 登出成功。");
+                break;
+            } else {
+                System.out.println(" 無效的選項。");
+            }
         }
     }
 }
