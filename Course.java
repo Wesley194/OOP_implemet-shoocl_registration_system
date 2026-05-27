@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public class Course {
@@ -33,13 +34,20 @@ public class Course {
     public List<Student> getEnrolledStudents() { return enrolledStudents; }
 
     public void addStudent(Student student) {
-        if (!isFull()) enrolledStudents.add(student);
+        if (!isFull()) {
+            // 如果有學號一樣的舊資料就直接丟掉
+            this.enrolledStudents.removeIf(s -> s.getUid().equals(student.getUid()));
+            this.enrolledStudents.add(student);
+            this.enrolledStudents.sort(Comparator.comparing(Student::getUid));
+        }
     }
     // 【新增以下方法】提供給加退選機制使用
     public List<Student> getPendingStudents() { return pendingStudents; }
     
     public void addPendingStudent(Student student) {
-        if (!pendingStudents.contains(student)) pendingStudents.add(student);
+        this.pendingStudents.removeIf(s -> s.getUid().equals(student.getUid()));
+        this.pendingStudents.add(student);
+        this.enrolledStudents.sort(Comparator.comparing(Student::getUid));
     }
     
     public void removePendingStudent(Student student) {
