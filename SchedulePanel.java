@@ -12,7 +12,7 @@ public class SchedulePanel extends JPanel {
     public SchedulePanel() {
         setLayout(new BorderLayout());
 
-        String[] scheduleCols = {"節次", "星期一", "星期二", "星期三", "星期四", "星期五"};
+        String[] scheduleCols = {"Period", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"};
         scheduleModel = new DefaultTableModel(scheduleCols, 14) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -79,7 +79,7 @@ public class SchedulePanel extends JPanel {
                     Object value = scheduleTable.getValueAt(row, col);
                     if (value != null && !value.toString().trim().isEmpty()) {
                         String cleanText = value.toString().replace("<html><center>", "").replace("</center></html>", "").replace("<br>", "\n").replace("<html>", "").replace("</html>", "");
-                        JOptionPane.showMessageDialog(SchedulePanel.this, cleanText, "課程資訊", JOptionPane.INFORMATION_MESSAGE);
+                        JOptionPane.showMessageDialog(SchedulePanel.this, cleanText, "Course Information", JOptionPane.INFORMATION_MESSAGE);
                     }
                 }
             }
@@ -106,9 +106,9 @@ public class SchedulePanel extends JPanel {
                 
                 String cellText;
                 if (showTeacherName) {
-                    cellText = "<html><center>" + c.getCourseName() + "<br>" + c.getCourseId() + "<br>" + c.getTeacher().getName() + "<br>" + c.getCredits() + "學分" + "<br>" + c.getTimeSlot().toString() + "</center></html>";
+                    cellText = "<html><center>" + c.getCourseName() + "<br>" + c.getCourseId() + "<br>" + c.getTeacher().getName() + "<br>" + c.getCredits() + " Credits" + "<br>" + c.getTimeSlot().toString() + "</center></html>";
                 } else {
-                    cellText = "<html><center>" + c.getCourseName() + "<br>" + c.getCourseId() + "<br>" + c.getCredits() + "學分" + "<br>" + c.getTimeSlot().toString() + "</center></html>";
+                    cellText = "<html><center>" + c.getCourseName() + "<br>" + c.getCourseId() + "<br>" + c.getCredits() + " Credits" + "<br>" + c.getTimeSlot().toString() + "</center></html>";
                 }
 
                 for (int period = start; period <= end; period++) {

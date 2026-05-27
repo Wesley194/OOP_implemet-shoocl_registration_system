@@ -39,6 +39,10 @@ public class RegistrationSystem {
         return stateManager.getCurrentPhase();
     }
 
+    // 取得階段名稱
+    public String getPhaseName(SystemStateManager.SystemPhase phase) {
+        return stateManager.getPhaseName(phase);
+    }
 
     
 
