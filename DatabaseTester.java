@@ -1,3 +1,6 @@
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Random;
 
 public class DatabaseTester {
@@ -63,8 +66,13 @@ public class DatabaseTester {
         for (Student s : students) {
             // 每個學生隨機選 2~4 門課
             int enrollCount = rand.nextInt(3) + 2; 
+            
+
+            List<Course> shuffledCourses = Arrays.asList(courses.clone());
+            Collections.shuffle(shuffledCourses, rand);
+            
             for (int j = 0; j < enrollCount; j++) {
-                Course randomCourse = courses[rand.nextInt(5)];
+                Course randomCourse = shuffledCourses.get(j);
                 
                 // 模擬 50% 機率是「直接選上」，50% 機率是「進入抽籤排隊」
                 if (rand.nextBoolean()) {
@@ -74,7 +82,7 @@ public class DatabaseTester {
                     try {
                         db.savePendingEnrollment(s, randomCourse);
                     } catch (Exception e) {
-                        // 忽略隨機產生的重複登記錯誤，讓迴圈繼續跑
+
                     }
                 }
             }
