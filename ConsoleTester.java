@@ -64,12 +64,19 @@ public class ConsoleTester {
                 int start = Integer.parseInt(scanner.nextLine());
                 System.out.print("結束節次 (例如 4): ");
                 int end = Integer.parseInt(scanner.nextLine());
-                System.out.print("加簽密碼 (不開放請直接按 Enter): ");
-                String authCode = scanner.nextLine();
+                System.out.print("密碼卡張數 (不產生請輸入 0): ");
+                int authCodeCount = Integer.parseInt(scanner.nextLine());
                 TimeSlot time = new TimeSlot(day, start, end);
                 try {
-                    system.createCourse(teacher, courseId, courseName, credits, 50, time, authCode);
+                    List<String> authCodes = system.createCourseWithAuthCodes(
+                            teacher, courseId, courseName, credits, 50, time, authCodeCount);
                     System.out.println("✅ 課程 [" + courseName + "] 新增成功！");
+                    if (!authCodes.isEmpty()) {
+                        System.out.println("產生的密碼卡：");
+                        for (String authCode : authCodes) {
+                            System.out.println(authCode);
+                        }
+                    }
                 } catch (Exception e) {
                     System.out.println("❌ " + e.getMessage());
                 }

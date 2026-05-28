@@ -86,19 +86,11 @@ public class Course {
     public void addPendingStudent(Student student) {
         this.pendingStudents.removeIf(s -> s.getUid().equals(student.getUid()));
         this.pendingStudents.add(student);
-        this.enrolledStudents.sort(Comparator.comparing(Student::getUid));
+        this.pendingStudents.sort(Comparator.comparing(Student::getUid));
     }
 
     public void removePendingStudent(Student student) {
         pendingStudents.remove(student);
-    }
-
-    // 舊版 GUI 還會呼叫，先保留方法但不再由 Course 保存密碼卡。
-    public String getAuthCode() {
-        return null;
-    }
-
-    public void setAuthCode(String authCode) {
     }
 
     @Override

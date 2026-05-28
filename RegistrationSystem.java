@@ -68,18 +68,6 @@ public class RegistrationSystem {
         lotteryManager.dropCourse(student, course);
     }
 
-    // 教師開課。
-    public void createCourse(
-            Teacher teacher,
-            String courseId,
-            String courseName,
-            int credits,
-            int maxCapacity,
-            TimeSlot time,
-            String authCode) throws Exception {
-        courseManager.createCourse(teacher, courseId, courseName, credits, maxCapacity, time, authCode);
-    }
-
     // 教師開課，並產生指定張數的密碼卡。
     public List<String> createCourseWithAuthCodes(
             Teacher teacher,

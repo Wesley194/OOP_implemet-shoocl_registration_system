@@ -18,18 +18,6 @@ public class CourseManager {
         this.random = new Random();
     }
 
-    // 舊版開課方法，先保留給還沒改好的 GUI 使用。
-    public void createCourse(
-            Teacher teacher,
-            String courseId,
-            String courseName,
-            int credits,
-            int maxCapacity,
-            TimeSlot time,
-            String authCode) throws Exception {
-        createCourseWithAuthCodes(teacher, courseId, courseName, credits, maxCapacity, time, 0);
-    }
-
     // 新版開課方法，會依張數產生密碼卡並回傳給 GUI。
     public List<String> createCourseWithAuthCodes(
             Teacher teacher,
