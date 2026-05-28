@@ -102,4 +102,18 @@ public class Course {
     public void setAuthCode(String authCode) {
         this.authCode = authCode;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+
+        Course otherCourse = (Course) obj;
+        return this.getCourseId().equals(otherCourse.getCourseId());
+    }
+
+    @Override
+    public int hashCode() {
+        return this.getCourseId().hashCode();
+    }
 }
