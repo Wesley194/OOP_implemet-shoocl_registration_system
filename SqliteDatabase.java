@@ -50,6 +50,7 @@ public class SqliteDatabase {
             stmt.execute(SqlQueries.CREATE_COURSES);
             stmt.execute(SqlQueries.CREATE_AUTH_CODES);
             stmt.execute(SqlQueries.CREATE_ANNOUNCEMENTS);
+            ensureAnnouncementSchema(stmt);
             stmt.execute(SqlQueries.CREATE_ENROLLMENTS);
             stmt.execute(SqlQueries.CREATE_PENDING);
 
@@ -57,6 +58,50 @@ public class SqliteDatabase {
             
         } catch (SQLException e) {
             System.err.println("建表失敗: " + e.getMessage());
+        }
+    }
+
+    private void ensureAnnouncementSchema(Statement stmt) throws SQLException {
+        boolean hasProfessorId = false;
+        boolean hasCourseId = false;
+        boolean hasCreatedAt = false;
+        boolean hasUpdatedAt = false;
+        boolean hasPostTime = false;
+        try (ResultSet rs = stmt.executeQuery("PRAGMA table_info(announcements)")) {
+            while (rs.next()) {
+                if ("professor_id".equals(rs.getString("name"))) {
+                    hasProfessorId = true;
+                }
+                if ("course_id".equals(rs.getString("name"))) {
+                    hasCourseId = true;
+                }
+                if ("created_at".equals(rs.getString("name"))) {
+                    hasCreatedAt = true;
+                }
+                if ("updated_at".equals(rs.getString("name"))) {
+                    hasUpdatedAt = true;
+                }
+                if ("post_time".equals(rs.getString("name"))) {
+                    hasPostTime = true;
+                }
+            }
+        }
+
+        if (!hasProfessorId) {
+            stmt.execute("ALTER TABLE announcements ADD COLUMN professor_id TEXT");
+        }
+        if (!hasCourseId) {
+            stmt.execute("ALTER TABLE announcements ADD COLUMN course_id TEXT");
+        }
+        if (!hasCreatedAt) {
+            stmt.execute("ALTER TABLE announcements ADD COLUMN created_at DATETIME");
+            if (hasPostTime) {
+                stmt.execute("UPDATE announcements SET created_at = post_time WHERE created_at IS NULL");
+            }
+        }
+        if (!hasUpdatedAt) {
+            stmt.execute("ALTER TABLE announcements ADD COLUMN updated_at DATETIME");
+            stmt.execute("UPDATE announcements SET updated_at = COALESCE(created_at, CURRENT_TIMESTAMP) WHERE updated_at IS NULL");
         }
     }
 
@@ -122,8 +167,9 @@ public class SqliteDatabase {
     public void addAnnouncement(String courseId, String title, String content) {
         try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.INSERT_ANNOUNCEMENT)) {
             pstmt.setString(1, courseId);
-            pstmt.setString(2, title);
-            pstmt.setString(3, content);
+            pstmt.setString(2, courseId);
+            pstmt.setString(3, title);
+            pstmt.setString(4, content);
             pstmt.executeUpdate();
             System.out.println(" 公告 [" + title + "] 已成功發布！");
         } catch (SQLException e) {
@@ -327,10 +373,14 @@ public class SqliteDatabase {
                 while (rs.next()) {
                     Announcement a = new Announcement(
                         rs.getInt("id"),
-                        rs.getString("course_id"),
                         rs.getString("title"),
                         rs.getString("content"),
-                        rs.getString("post_time")
+                        rs.getString("course_id"),
+                        rs.getString("course_name"),
+                        rs.getString("professor_id"),
+                        rs.getString("professor_name"),
+                        rs.getString("created_at"),
+                        rs.getString("updated_at")
                     );
                     announcements.add(a);
                 }
@@ -339,6 +389,126 @@ public class SqliteDatabase {
             System.err.println("❌ 查詢公告失敗: " + e.getMessage());
         }
         return announcements;
+    }
+
+    public boolean createAnnouncement(Announcement announcement) {
+        if (isBlank(announcement.getTitle()) || isBlank(announcement.getContent())
+                || isBlank(announcement.getCourseId()) || isBlank(announcement.getProfessorId())) {
+            return false;
+        }
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.INSERT_GENERAL_ANNOUNCEMENT,
+                Statement.RETURN_GENERATED_KEYS)) {
+            pstmt.setString(1, announcement.getTitle().trim());
+            pstmt.setString(2, announcement.getContent().trim());
+            pstmt.setString(3, announcement.getCourseId());
+            pstmt.setString(4, announcement.getProfessorId());
+            if (pstmt.executeUpdate() > 0) {
+                try (ResultSet keys = pstmt.getGeneratedKeys()) {
+                    if (keys.next()) {
+                        announcement.setId(keys.getInt(1));
+                    }
+                }
+                return true;
+            }
+        } catch (SQLException e) {
+            System.err.println("Announcement creation failed: " + e.getMessage());
+        }
+        return false;
+    }
+
+    public List<Announcement> getAllAnnouncements() {
+        List<Announcement> announcements = new ArrayList<>();
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.GET_ALL_ANNOUNCEMENTS);
+             ResultSet rs = pstmt.executeQuery()) {
+            while (rs.next()) {
+                announcements.add(mapAnnouncement(rs));
+            }
+        } catch (SQLException e) {
+            System.err.println("Announcement query failed: " + e.getMessage());
+        }
+        return announcements;
+    }
+
+    public List<Announcement> getAnnouncementsByProfessor(String professorId) {
+        List<Announcement> announcements = new ArrayList<>();
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.GET_ANNOUNCEMENTS_BY_PROFESSOR)) {
+            pstmt.setString(1, professorId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    announcements.add(mapAnnouncement(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Professor announcement query failed: " + e.getMessage());
+        }
+        return announcements;
+    }
+
+    public List<Announcement> getAnnouncementsByProfessor(int professorId) {
+        return getAnnouncementsByProfessor(String.valueOf(professorId));
+    }
+
+    public Announcement getAnnouncementById(int announcementId) {
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.GET_ANNOUNCEMENT_BY_ID)) {
+            pstmt.setInt(1, announcementId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return mapAnnouncement(rs);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Announcement lookup failed: " + e.getMessage());
+        }
+        return null;
+    }
+
+    public boolean updateAnnouncement(Announcement announcement) {
+        if (isBlank(announcement.getTitle()) || isBlank(announcement.getContent())
+                || isBlank(announcement.getProfessorId())) {
+            return false;
+        }
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.UPDATE_ANNOUNCEMENT)) {
+            pstmt.setString(1, announcement.getTitle().trim());
+            pstmt.setString(2, announcement.getContent().trim());
+            pstmt.setInt(3, announcement.getId());
+            pstmt.setString(4, announcement.getProfessorId());
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("Announcement update failed: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean deleteAnnouncement(int announcementId, String professorId) {
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.DELETE_ANNOUNCEMENT)) {
+            pstmt.setInt(1, announcementId);
+            pstmt.setString(2, professorId);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("Announcement deletion failed: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean deleteAnnouncement(int announcementId, int professorId) {
+        return deleteAnnouncement(announcementId, String.valueOf(professorId));
+    }
+
+    private Announcement mapAnnouncement(ResultSet rs) throws SQLException {
+        return new Announcement(
+                rs.getInt("id"),
+                rs.getString("title"),
+                rs.getString("content"),
+                rs.getString("course_id"),
+                rs.getString("course_name"),
+                rs.getString("professor_id"),
+                rs.getString("professor_name"),
+                rs.getString("created_at"),
+                rs.getString("updated_at"));
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     public void hydrateCourseStudents(Course course) {

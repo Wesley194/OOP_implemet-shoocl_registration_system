@@ -1,6 +1,8 @@
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.List;
 import java.util.Map;
 
@@ -28,10 +30,13 @@ public class MainGUI extends JFrame {
     // --- 需要動態更新的介面元件 ---
     private JLabel lblStudentWelcome = new JLabel();
     private JComboBox<String> courseComboBox;
+    private JComboBox<String> teacherAnnouncementCourseCombo;
     private DefaultTableModel studentsTableModel;
     private JTable studentsTable;
     private DefaultTableModel allCoursesModel;
     private DefaultTableModel myCoursesModel;
+    private DefaultTableModel teacherAnnouncementModel;
+    private JTable teacherAnnouncementTable;
     private SchedulePanel studentSchedulePanel = new SchedulePanel();
     private SchedulePanel teacherSchedulePanel = new SchedulePanel();
     private JLabel lblTeacherWelcome = new JLabel();
@@ -358,8 +363,12 @@ public class MainGUI extends JFrame {
         myCoursesTable.getColumnModel().getColumn(5).setPreferredWidth(70);
         myGradesPanel.add(new JScrollPane(myCoursesTable), BorderLayout.CENTER);
 
+        JPanel myCourseActions = new JPanel();
         JButton btnDrop = new JButton("Drop Course");
-        myGradesPanel.add(btnDrop, BorderLayout.SOUTH);
+        JButton btnViewAnnouncements = new JButton("View Announcements");
+        myCourseActions.add(btnDrop);
+        myCourseActions.add(btnViewAnnouncements);
+        myGradesPanel.add(myCourseActions, BorderLayout.SOUTH);
 
         btnDrop.addActionListener(e -> {
             int row = myCoursesTable.getSelectedRow();
@@ -381,6 +390,16 @@ public class MainGUI extends JFrame {
                     JOptionPane.showMessageDialog(this, ex.getMessage(), "Drop Failed", JOptionPane.ERROR_MESSAGE);
                 }
             }
+        });
+
+        btnViewAnnouncements.addActionListener(e -> {
+            int row = myCoursesTable.getSelectedRow();
+            if (row == -1) {
+                JOptionPane.showMessageDialog(this, "Please select a course first.", "Hint",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            showCourseAnnouncements(currentStudent.getMyCourses().get(row));
         });
 
         tabbedPane.addTab("Browse All Courses", enrollPanel);
@@ -600,8 +619,52 @@ public class MainGUI extends JFrame {
         tabbedPane.addTab("Create Course", addCoursePanel);
         tabbedPane.addTab("Student List & Grading", gradePanel);
         tabbedPane.addTab("My Schedule", teacherSchedulePanel);
+        tabbedPane.addTab("Announcements", buildTeacherAnnouncementsPanel());
 
         teacherPanel.add(tabbedPane, BorderLayout.CENTER);
+    }
+
+    private JPanel buildTeacherAnnouncementsPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        JPanel selector = new JPanel();
+        selector.add(new JLabel("Course: "));
+        teacherAnnouncementCourseCombo = new JComboBox<>();
+        selector.add(teacherAnnouncementCourseCombo);
+        panel.add(selector, BorderLayout.NORTH);
+
+        String[] cols = { "ID", "Course", "Title", "Created" };
+        teacherAnnouncementModel = new DefaultTableModel(cols, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        teacherAnnouncementTable = new JTable(teacherAnnouncementModel);
+        teacherAnnouncementTable.setRowHeight(25);
+        teacherAnnouncementTable.getTableHeader().setReorderingAllowed(false);
+        addAnnouncementDoubleClickHandler(teacherAnnouncementTable);
+        panel.add(new JScrollPane(teacherAnnouncementTable), BorderLayout.CENTER);
+
+        JPanel buttons = new JPanel();
+        JButton btnPublish = new JButton("Publish");
+        JButton btnRead = new JButton("Read Selected");
+        JButton btnEdit = new JButton("Edit Selected");
+        JButton btnDelete = new JButton("Delete Selected");
+        JButton btnRefresh = new JButton("Refresh");
+        buttons.add(btnPublish);
+        buttons.add(btnRead);
+        buttons.add(btnEdit);
+        buttons.add(btnDelete);
+        buttons.add(btnRefresh);
+        panel.add(buttons, BorderLayout.SOUTH);
+
+        btnPublish.addActionListener(e -> publishAnnouncement());
+        btnRead.addActionListener(e -> readSelectedTeacherAnnouncement());
+        btnEdit.addActionListener(e -> editSelectedTeacherAnnouncement());
+        btnDelete.addActionListener(e -> deleteSelectedTeacherAnnouncement());
+        btnRefresh.addActionListener(e -> refreshTeacherAnnouncements());
+        teacherAnnouncementCourseCombo.addActionListener(e -> refreshTeacherAnnouncements());
+        return panel;
     }
 
     private void refreshTeacherView() {
@@ -615,8 +678,213 @@ public class MainGUI extends JFrame {
         for (Course c : myCourses) {
             courseComboBox.addItem(c.getCourseName() + " (" + c.getCourseId() + ")");
         }
+        if (teacherAnnouncementCourseCombo != null) {
+            teacherAnnouncementCourseCombo.removeAllItems();
+            for (Course c : myCourses) {
+                teacherAnnouncementCourseCombo.addItem(c.getCourseName() + " (" + c.getCourseId() + ")");
+            }
+        }
         updateStudentsTable();
         teacherSchedulePanel.updateCourses(myCourses, false);
+        refreshTeacherAnnouncements();
+    }
+
+    private void showCourseAnnouncements(Course course) {
+        String[] cols = { "ID", "Course", "Title", "Created" };
+        DefaultTableModel model = new DefaultTableModel(cols, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        JTable table = new JTable(model);
+        table.setRowHeight(25);
+        table.getTableHeader().setReorderingAllowed(false);
+        addAnnouncementDoubleClickHandler(table);
+        for (Announcement a : db.getCourseAnnouncements(course.getCourseId())) {
+            model.addRow(announcementRow(a));
+        }
+        JButton readButton = new JButton("Read Selected");
+        JPanel content = new JPanel(new BorderLayout());
+        content.add(new JScrollPane(table), BorderLayout.CENTER);
+        content.add(readButton, BorderLayout.SOUTH);
+        JDialog dialog = new JDialog(this, "Announcements - " + course.getCourseName(), true);
+        readButton.addActionListener(e -> readSelectedAnnouncement(table));
+        dialog.setContentPane(content);
+        dialog.setSize(650, 400);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private Course selectedTeacherAnnouncementCourse() {
+        if (teacherAnnouncementCourseCombo == null || currentTeacher == null) return null;
+        int selectedIndex = teacherAnnouncementCourseCombo.getSelectedIndex();
+        if (selectedIndex < 0 || selectedIndex >= currentTeacher.getTeachingCourses().size()) return null;
+        return currentTeacher.getTeachingCourses().get(selectedIndex);
+    }
+
+    private void refreshTeacherAnnouncements() {
+        if (teacherAnnouncementModel == null || currentTeacher == null) return;
+        teacherAnnouncementModel.setRowCount(0);
+        Course selectedCourse = selectedTeacherAnnouncementCourse();
+        if (selectedCourse == null) return;
+        for (Announcement a : db.getCourseAnnouncements(selectedCourse.getCourseId())) {
+            if (!currentTeacher.getUid().equals(a.getProfessorId())) continue;
+            teacherAnnouncementModel.addRow(announcementRow(a));
+        }
+    }
+
+    private Object[] announcementRow(Announcement a) {
+        return new Object[] {
+                a.getId(),
+                a.getCourseName() == null ? "" : a.getCourseName(),
+                a.getTitle(),
+                a.getCreatedAt()
+        };
+    }
+
+    private void publishAnnouncement() {
+        if (currentTeacher == null) return;
+        Course selectedCourse = selectedTeacherAnnouncementCourse();
+        if (selectedCourse == null) {
+            JOptionPane.showMessageDialog(this, "Please select a course before publishing.", "Input Error",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        JTextField titleField = new JTextField();
+        JTextArea contentArea = new JTextArea(8, 30);
+        Object[] form = {
+                "Title:", titleField,
+                "Content:", new JScrollPane(contentArea)
+        };
+        int result = JOptionPane.showConfirmDialog(this, form, "Publish Announcement",
+                JOptionPane.OK_CANCEL_OPTION);
+        if (result != JOptionPane.OK_OPTION) return;
+
+        String title = titleField.getText().trim();
+        String content = contentArea.getText().trim();
+        if (title.isEmpty() || content.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Title and content cannot be empty.", "Input Error",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        boolean created = db.createAnnouncement(new Announcement(title, content, selectedCourse.getCourseId(),
+                currentTeacher.getUid()));
+        if (created) {
+            JOptionPane.showMessageDialog(this, "Announcement published successfully.");
+            refreshTeacherAnnouncements();
+        } else {
+            JOptionPane.showMessageDialog(this, "Announcement publish failed.", "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void readSelectedTeacherAnnouncement() {
+        readSelectedAnnouncement(teacherAnnouncementTable);
+    }
+
+    private void addAnnouncementDoubleClickHandler(JTable table) {
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getButton() != MouseEvent.BUTTON1 || e.getClickCount() != 2) return;
+                int row = table.rowAtPoint(e.getPoint());
+                if (row == -1) return;
+                table.setRowSelectionInterval(row, row);
+                readSelectedAnnouncement(table);
+            }
+        });
+    }
+
+    private void readSelectedAnnouncement(JTable table) {
+        Integer id = selectedAnnouncementId(table);
+        if (id == null) return;
+        Announcement a = db.getAnnouncementById(id);
+        if (a == null) {
+            JOptionPane.showMessageDialog(this, "Announcement not found.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        JTextArea content = new JTextArea(a.getContent(), 12, 40);
+        content.setEditable(false);
+        content.setLineWrap(true);
+        content.setWrapStyleWord(true);
+        String professor = a.getProfessorName() == null ? a.getProfessorId()
+                : a.getProfessorName() + " (" + a.getProfessorId() + ")";
+        Object[] detail = {
+                "Title: " + a.getTitle(),
+                "Course: " + (a.getCourseName() == null ? "" : a.getCourseName()),
+                "Professor: " + professor,
+                "Created: " + a.getCreatedAt(),
+                "Updated: " + a.getUpdatedAt(),
+                new JScrollPane(content)
+        };
+        JOptionPane.showMessageDialog(this, detail, "Announcement Detail", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void editSelectedTeacherAnnouncement() {
+        Integer id = selectedAnnouncementId(teacherAnnouncementTable);
+        if (id == null || currentTeacher == null) return;
+        Announcement a = db.getAnnouncementById(id);
+        if (a == null || !currentTeacher.getUid().equals(a.getProfessorId())) {
+            JOptionPane.showMessageDialog(this, "You can only edit your own announcements.", "Permission Denied",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        JTextField titleField = new JTextField(a.getTitle());
+        JTextArea contentArea = new JTextArea(a.getContent(), 8, 30);
+        Object[] form = {
+                "Title:", titleField,
+                "Content:", new JScrollPane(contentArea)
+        };
+        int result = JOptionPane.showConfirmDialog(this, form, "Edit Announcement",
+                JOptionPane.OK_CANCEL_OPTION);
+        if (result != JOptionPane.OK_OPTION) return;
+
+        String title = titleField.getText().trim();
+        String content = contentArea.getText().trim();
+        if (title.isEmpty() || content.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Title and content cannot be empty.", "Input Error",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        a.setTitle(title);
+        a.setContent(content);
+        boolean updated = db.updateAnnouncement(a);
+        if (updated) {
+            JOptionPane.showMessageDialog(this, "Announcement updated successfully.");
+            refreshTeacherAnnouncements();
+        } else {
+            JOptionPane.showMessageDialog(this, "Update failed.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void deleteSelectedTeacherAnnouncement() {
+        Integer id = selectedAnnouncementId(teacherAnnouncementTable);
+        if (id == null || currentTeacher == null) return;
+        int confirm = JOptionPane.showConfirmDialog(this, "Delete selected announcement?", "Confirm Delete",
+                JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) return;
+
+        boolean deleted = db.deleteAnnouncement(id, currentTeacher.getUid());
+        if (deleted) {
+            JOptionPane.showMessageDialog(this, "Announcement deleted successfully.");
+            refreshTeacherAnnouncements();
+        } else {
+            JOptionPane.showMessageDialog(this, "You can only delete your own announcements.", "Permission Denied",
+                    JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
+    private Integer selectedAnnouncementId(JTable table) {
+        if (table == null || table.getSelectedRow() == -1) {
+            JOptionPane.showMessageDialog(this, "Please select an announcement first.", "Hint",
+                    JOptionPane.WARNING_MESSAGE);
+            return null;
+        }
+        return (Integer) table.getValueAt(table.getSelectedRow(), 0);
     }
 
     private void updateStudentsTable() {
