@@ -41,7 +41,7 @@ public class SqlQueries {
             "student_id TEXT, course_id TEXT, PRIMARY KEY (student_id, course_id));";
 
     public static final String INSERT_DEFAULT_ADMIN = "INSERT OR IGNORE INTO admins (uid, name, password) " +
-            "VALUES ('admin', '超級管理員', 'admin123');";
+            "VALUES ('admin', 'admin', 'admin123');";
 
 
     // 新增資料 INSERT

@@ -23,9 +23,9 @@ public class SqliteDatabase {
     private void connect() {
         try {
             connection = DriverManager.getConnection(DB_URL);
-            System.out.println("成功連線至 SQLite 資料庫！");
+            System.out.println("Successfully connected to SQLite database!");
         } catch (SQLException e) {
-            System.err.println("資料庫連線失敗: " + e.getMessage());
+            System.err.println("Database connection failed: " + e.getMessage());
         }
     }
 
@@ -57,7 +57,7 @@ public class SqliteDatabase {
             stmt.execute(SqlQueries.INSERT_DEFAULT_ADMIN);
             
         } catch (SQLException e) {
-            System.err.println("建表失敗: " + e.getMessage());
+            System.err.println("Table creation failed: " + e.getMessage());
         }
     }
 
@@ -113,10 +113,10 @@ public class SqliteDatabase {
             pstmt.setString(2, s.getName());
             pstmt.setString(3, s.getPassword());
 
-            pstmt.executeUpdate(); // 把資料塞進資料庫
-            System.out.println("學生新增成功!");
+            pstmt.executeUpdate();
+            System.out.println("Student added successfully!");
         } catch (SQLException e) {
-            System.out.println(" 寫入學生失敗 (可能是帳號已存在): " + e.getMessage());
+            System.out.println("Failed to add student (account may already exist): " + e.getMessage());
         }
     }
 
@@ -126,9 +126,9 @@ public class SqliteDatabase {
             pstmt.setString(2, t.getName());
             pstmt.setString(3, t.getPassword());
             pstmt.executeUpdate();
-            System.out.println("教師新增成功!");
+            System.out.println("Teacher added successfully!");
         } catch (SQLException e) {
-            System.out.println(" 寫入教師失敗: " + e.getMessage());
+            System.out.println("Failed to add teacher: " + e.getMessage());
         }
     }
 
@@ -144,12 +144,12 @@ public class SqliteDatabase {
             pstmt.setString(8, c.getTeacher().getUid());
 
             pstmt.executeUpdate();
-            System.out.println(" 課程 [" + c.getCourseName() + "] 已成功開課並寫入資料庫！");
+            System.out.println("Course [" + c.getCourseName() + "] successfully created and saved to database!");
         } catch (SQLException e) {
             if (e.getMessage().contains("UNIQUE constraint failed")) {
-                System.out.println(" 課程代碼 " + c.getCourseId() + " 已存在，略過新增。");
+                System.out.println("Course ID " + c.getCourseId() + " already exists, skipping.");
             } else {
-                System.err.println(" 寫入課程失敗: " + e.getMessage());
+                System.err.println("Failed to add course: " + e.getMessage());
             }
         }
     }
@@ -160,7 +160,7 @@ public class SqliteDatabase {
             pstmt.setString(2, courseId);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println(" 寫入密碼卡失敗: " + e.getMessage());
+            System.err.println("Failed to add auth code: " + e.getMessage());
         }
     }
 
@@ -171,9 +171,9 @@ public class SqliteDatabase {
             pstmt.setString(3, title);
             pstmt.setString(4, content);
             pstmt.executeUpdate();
-            System.out.println(" 公告 [" + title + "] 已成功發布！");
+            System.out.println(" Announcement <" + title + "> successfully published!");
         } catch (SQLException e) {
-            System.err.println(" 發布公告失敗: " + e.getMessage());
+            System.err.println("Failed to publish announcement: " + e.getMessage());
         }
     }
 
@@ -182,12 +182,12 @@ public class SqliteDatabase {
             pstmt.setString(1, student.getUid());
             pstmt.setString(2, course.getCourseId());
             pstmt.executeUpdate();
-            System.out.println(" 選課成功！已將 [" + student.getName() + "] 加入 [" + course.getCourseName() + "]");
+            System.out.println("Enrollment successful! Added " + student.getName() + " to " + course.getCourseName() );
         } catch (SQLException e) {
             if (e.getMessage().contains("UNIQUE constraint failed")) {
-                System.out.println(" 選課失敗：這名學生已經選過這門課了！");
+                System.out.println("Enrollment failed: This student is already enrolled in this course!");
             } else {
-                System.err.println(" 選課發生異常: " + e.getMessage());
+                System.err.println("Enrollment error: " + e.getMessage());
             }
         }
     }
@@ -199,9 +199,9 @@ public class SqliteDatabase {
             pstmt.executeUpdate();
         } catch (SQLException e) {
             if (e.getMessage() != null && e.getMessage().toLowerCase().contains("unique")) {
-                throw new Exception("您已經登記過此課程，請等待抽籤結果。");
+                throw new Exception("You have already registered for this course. Please wait for the lottery results.");
             } else {
-                throw new Exception("資料庫異常: " + e.getMessage());
+                throw new Exception("Database error: " + e.getMessage());
             }
         }
     }
@@ -267,7 +267,7 @@ public class SqliteDatabase {
                 loadPendingStudentsForCourse(course);
                 courseList.add(course);
             }
-        } catch (SQLException e) { System.err.println(" 查詢課程失敗: " + e.getMessage()); }
+        } catch (SQLException e) { System.err.println("Failed to query courses: " + e.getMessage()); }
         return courseList;
     }
 
@@ -299,7 +299,7 @@ public class SqliteDatabase {
                 }
             }
         } catch (SQLException e) { 
-            System.err.println(" 搜尋課程失敗: " + e.getMessage()); 
+            System.err.println("Failed to search courses: " + e.getMessage()); 
         }
         
         return searchResults;
@@ -312,7 +312,7 @@ public class SqliteDatabase {
             while (rs.next()) {
                 list.add(new Student(rs.getString("uid"), rs.getString("name"), rs.getString("password")));
             }
-        } catch (SQLException e) { System.err.println(" 查詢學生失敗: " + e.getMessage()); }
+        } catch (SQLException e) { System.err.println("Failed to query students: " + e.getMessage()); }
         return list;
     }
 
@@ -323,7 +323,7 @@ public class SqliteDatabase {
             while (rs.next()) {
                 list.add(new Teacher(rs.getString("uid"), rs.getString("name"), rs.getString("password")));
             }
-        } catch (SQLException e) { System.err.println(" 查詢教師失敗: " + e.getMessage()); }
+        } catch (SQLException e) { System.err.println("Failed to query teachers: " + e.getMessage()); }
         return list;
     }
 
@@ -341,7 +341,7 @@ public class SqliteDatabase {
                                            rs.getInt("credits"), rs.getInt("max_capacity"), ts, t));
                 }
             }
-        } catch (SQLException e) { System.err.println(" 查詢課表失敗: " + e.getMessage()); }
+        } catch (SQLException e) { System.err.println("Failed to query schedule: " + e.getMessage()); }
         return myCourses;
     }
 
@@ -361,7 +361,7 @@ public class SqliteDatabase {
                     courseGrades.put(course, rs.wasNull() ? null : score);
                 }
             }
-        } catch (SQLException e) { System.err.println(" 查詢成績表失敗: " + e.getMessage()); }
+        } catch (SQLException e) { System.err.println("Failed to query grades: " + e.getMessage()); }
         return courseGrades;
     }
 
@@ -386,7 +386,7 @@ public class SqliteDatabase {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("❌ 查詢公告失敗: " + e.getMessage());
+            System.err.println("Failed to query announcements: " + e.getMessage());
         }
         return announcements;
     }
@@ -522,7 +522,7 @@ public class SqliteDatabase {
                     course.addStudent(s);
                 }
             }
-        } catch (SQLException e) { System.err.println(" 撈取修課名單失敗: " + e.getMessage()); }
+        } catch (SQLException e) { System.err.println("Failed to load enrolled students: " + e.getMessage()); }
     }
 
     private void loadPendingStudentsForCourse(Course course) {
@@ -533,7 +533,7 @@ public class SqliteDatabase {
                 Student s = findStudent(rs.getString("student_id"));
                 if (s != null) course.addPendingStudent(s);
             }
-        } catch (SQLException e) { System.err.println(" 讀取排隊名單失敗: " + e.getMessage()); }
+        } catch (SQLException e) { System.err.println("Failed to load pending students: " + e.getMessage()); }
     }
 
     private void loadEnrolledStudentsForCourse(Course course) {
@@ -544,7 +544,7 @@ public class SqliteDatabase {
                 Student s = findStudent(rs.getString("student_id"));
                 if (s != null) course.addStudent(s);
             }
-        } catch (SQLException e) { System.err.println(" 讀取正式名單失敗: " + e.getMessage()); }
+        } catch (SQLException e) { System.err.println("Failed to load enrolled students: " + e.getMessage()); }
     }
 
 
@@ -555,13 +555,13 @@ public class SqliteDatabase {
             pstmt.setString(2, student.getUid());
             pstmt.setString(3, course.getCourseId());
             if (pstmt.executeUpdate() > 0) {
-                System.out.println(" 已將 [" + student.getName() + "] 的 [" + course.getCourseName() + "] 成績登記為: " + score);
+                System.out.println(" Registered grade for " + student.getName() + " in " + course.getCourseName() + "] 成績登記為: " + score);
                 return true;
             }
-            System.out.println(" 找不到該學生的選課紀錄。");
+            System.out.println("Enrollment record not found for this student.");
             return false;
         } catch (SQLException e) {
-            System.err.println(" 成績登記失敗: " + e.getMessage());
+            System.err.println("Failed to register grade: " + e.getMessage());
             return false;
         }
     }
@@ -572,21 +572,21 @@ public class SqliteDatabase {
             pstmt.setString(1, inputCode);
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (!rs.next()) {
-                    throw new Exception("找不到這組密碼卡，請確認是否輸入錯誤！");
+                    throw new Exception("Auth code not found. Please check your input!");
                 }
                 
                 String targetCourseId = rs.getString("course_id");
                 if (!targetCourseId.equals(course.getCourseId())) {
-                    throw new Exception("這張密碼卡不屬於這門課！");
+                    throw new Exception("This auth code does not belong to this course!");
                 }
                 
                 int isUsed = rs.getInt("is_used");
                 if (isUsed == 1) {
-                    throw new Exception("這張密碼卡已經被用掉囉！");
+                    throw new Exception("This auth code has already been used!");
                 }
             }
         } catch (SQLException e) {
-            throw new Exception("資料庫查詢異常: " + e.getMessage());
+            throw new Exception("Database query error: " + e.getMessage());
         }
         
         try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.UPDATE_AUTH_CODE_USED)) {
@@ -594,7 +594,7 @@ public class SqliteDatabase {
             pstmt.setString(2, inputCode);        
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            throw new Exception("更新密碼卡狀態失敗: " + e.getMessage());
+            throw new Exception("Failed to update auth code status: " + e.getMessage());
         }
     }
 
@@ -603,7 +603,7 @@ public class SqliteDatabase {
             pstmt.setString(1, student.getUid());
             pstmt.setString(2, course.getCourseId());
             pstmt.executeUpdate();
-        } catch (SQLException e) { System.err.println(" 取消登記異常: " + e.getMessage()); }
+        } catch (SQLException e) { System.err.println("Failed to cancel pending enrollment: " + e.getMessage()); }
     }
 
     public boolean deleteEnrollment(Student student, Course course) {
@@ -612,7 +612,7 @@ public class SqliteDatabase {
             pstmt.setString(2, course.getCourseId());
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println(" 退選異常: " + e.getMessage());
+            System.err.println("Failed to drop course: " + e.getMessage());
             return false;
         }
     }
