@@ -1,3 +1,5 @@
+import java.util.List;
+
 // 給前端呼叫的系統入口，負責檢查階段並轉交給各個 Manager。
 public class RegistrationSystem {
     private CourseManager courseManager;
@@ -76,6 +78,19 @@ public class RegistrationSystem {
             TimeSlot time,
             String authCode) throws Exception {
         courseManager.createCourse(teacher, courseId, courseName, credits, maxCapacity, time, authCode);
+    }
+
+    // 教師開課，並產生指定張數的密碼卡。
+    public List<String> createCourseWithAuthCodes(
+            Teacher teacher,
+            String courseId,
+            String courseName,
+            int credits,
+            int maxCapacity,
+            TimeSlot time,
+            int authCodeCount) throws Exception {
+        return courseManager.createCourseWithAuthCodes(
+                teacher, courseId, courseName, credits, maxCapacity, time, authCodeCount);
     }
 
     // 教師登記學生成績。

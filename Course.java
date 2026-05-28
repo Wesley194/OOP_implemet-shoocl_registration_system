@@ -12,7 +12,6 @@ public class Course {
     private Teacher teacher;
     private List<Student> enrolledStudents;
     private List<Student> pendingStudents;
-    private String authCode;
 
     // 建立課程並初始化學生名單。
     public Course(
@@ -94,13 +93,12 @@ public class Course {
         pendingStudents.remove(student);
     }
 
-    // 管理課程加簽授權碼。
+    // 舊版 GUI 還會呼叫，先保留方法但不再由 Course 保存密碼卡。
     public String getAuthCode() {
-        return authCode;
+        return null;
     }
 
     public void setAuthCode(String authCode) {
-        this.authCode = authCode;
     }
 
     @Override
