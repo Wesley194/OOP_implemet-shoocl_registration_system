@@ -35,12 +35,14 @@ public class MainGUI extends JFrame {
     private JTable studentsTable;
     private DefaultTableModel allCoursesModel;
     private DefaultTableModel myCoursesModel;
+    private DefaultTableModel pendingCoursesModel;
     private DefaultTableModel teacherAnnouncementModel;
     private JTable teacherAnnouncementTable;
     private SchedulePanel studentSchedulePanel = new SchedulePanel();
     private SchedulePanel teacherSchedulePanel = new SchedulePanel();
     private JLabel lblTeacherWelcome = new JLabel();
     private JLabel lblAdminStatus = new JLabel();
+
 
     public MainGUI() {
 
@@ -268,10 +270,8 @@ public class MainGUI extends JFrame {
 
         JPanel bottomActionPanel = new JPanel();
         JButton btnEnroll = new JButton("Register for Lottery / Normal Add");
-        JButton btnCancelPending = new JButton("Cancel Registration");
         JButton btnForceEnroll = new JButton("Force Add with Auth Code");
         bottomActionPanel.add(btnEnroll);
-        bottomActionPanel.add(btnCancelPending);
         bottomActionPanel.add(btnForceEnroll);
         enrollPanel.add(bottomActionPanel, BorderLayout.SOUTH);
 
@@ -295,24 +295,6 @@ public class MainGUI extends JFrame {
                     JOptionPane.showMessageDialog(this, "System is closed or running lottery, cannot enroll now!",
                             "Phase Error", JOptionPane.WARNING_MESSAGE);
                 }
-                refreshStudentView();
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, ex.getMessage(), "Operation Failed", JOptionPane.ERROR_MESSAGE);
-            }
-        });
-
-        // 取消登記
-        btnCancelPending.addActionListener(e -> {
-            int row = allCoursesTable.getSelectedRow();
-            if (row == -1) {
-                JOptionPane.showMessageDialog(this, "Please select a course to cancel from the table!", "Hint",
-                        JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-            Course selectedCourse = db.getAllCourses().get(row);
-            try {
-                system.cancelPendingCourse(currentStudent, selectedCourse);
-                JOptionPane.showMessageDialog(this, "Registration cancelled successfully!");
                 refreshStudentView();
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, ex.getMessage(), "Operation Failed", JOptionPane.ERROR_MESSAGE);
@@ -402,7 +384,52 @@ public class MainGUI extends JFrame {
             showCourseAnnouncements(currentStudent.getMyCourses().get(row));
         });
 
+        // --- 等待抽籤面板 (Pending Courses) ---
+        JPanel pendingPanel = new JPanel(new BorderLayout());
+        String[] pendingCols = { "Course ID", "Course Name", "Credits", "Professor", "Time" };
+        pendingCoursesModel = new DefaultTableModel(pendingCols, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        JTable pendingCoursesTable = new JTable(pendingCoursesModel);
+        pendingCoursesTable.setRowHeight(25);
+        pendingCoursesTable.getTableHeader().setReorderingAllowed(false);
+        pendingPanel.add(new JScrollPane(pendingCoursesTable), BorderLayout.CENTER);
+        JPanel pendingActions = new JPanel();
+        JButton btnCancelPending = new JButton("Cancel Registration");
+        pendingActions.add(btnCancelPending);
+        pendingPanel.add(pendingActions, BorderLayout.SOUTH);
+        btnCancelPending.addActionListener(e -> {
+            int row = pendingCoursesTable.getSelectedRow();
+            if (row == -1) {
+                JOptionPane.showMessageDialog(this, "Please select a course to cancel from the table!", "Hint",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            String courseId = (String) pendingCoursesModel.getValueAt(row, 0);
+            Course selectedCourse = db.getAllCourses().stream()
+                    .filter(c -> c.getCourseId().equals(courseId)).findFirst().orElse(null);
+            
+            if (selectedCourse != null) {
+                int confirm = JOptionPane.showConfirmDialog(this,
+                        "Are you sure you want to cancel pending for [" + selectedCourse.getCourseName() + "]?", "Confirm Cancel",
+                        JOptionPane.YES_NO_OPTION);
+                if (confirm == JOptionPane.YES_OPTION) {
+                    try {
+                        system.cancelPendingCourse(currentStudent, selectedCourse);
+                        JOptionPane.showMessageDialog(this, "Registration cancelled successfully!");
+                        refreshStudentView();
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(this, ex.getMessage(), "Operation Failed", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            }
+        });
+
         tabbedPane.addTab("Browse All Courses", enrollPanel);
+        tabbedPane.addTab("Pending Courses", pendingPanel);
         tabbedPane.addTab("My Schedule", studentSchedulePanel);
         tabbedPane.addTab("My Grades", myGradesPanel);
         studentPanel.add(tabbedPane, BorderLayout.CENTER);
@@ -430,6 +457,14 @@ public class MainGUI extends JFrame {
             String scoreStr = (score == null) ? "Not Graded" : score.toString();
             myCoursesModel.addRow(new Object[] { c.getCourseId(), c.getCourseName(), c.getCredits(),
                     c.getTeacher().getName(), c.getTimeSlot().toString(), scoreStr });
+        }
+
+        pendingCoursesModel.setRowCount(0);
+        for (Course c : db.getAllCourses()) {
+            if (c.getPendingStudents().contains(currentStudent)) {
+                pendingCoursesModel.addRow(new Object[] { c.getCourseId(), c.getCourseName(), c.getCredits(),
+                        c.getTeacher().getName(), c.getTimeSlot().toString() });
+            }
         }
 
         studentSchedulePanel.updateCourses(currentStudent.getMyCourses(), true);
