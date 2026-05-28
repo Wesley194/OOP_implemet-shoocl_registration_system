@@ -502,7 +502,7 @@ public class MainGUI extends JFrame {
         JTextField txtStart = new JTextField(12);
         JTextField txtEnd = new JTextField(12);
         JTextField txtCapacity = new JTextField("50", 12);
-        JButton btnAddAuthCode = new JButton("Add Auth Code");
+        JTextField txtAuthCardCount = new JTextField("0", 12);
         fieldsPanel.add(new JLabel("Course ID (e.g., CS103):"));
         fieldsPanel.add(txtCode);
         fieldsPanel.add(new JLabel("Course Name:"));
@@ -517,17 +517,9 @@ public class MainGUI extends JFrame {
         fieldsPanel.add(txtEnd);
         fieldsPanel.add(new JLabel("Capacity (default 50):"));
         fieldsPanel.add(txtCapacity);
-        fieldsPanel.add(new JLabel("Auth Code Setting:"));
-        fieldsPanel.add(btnAddAuthCode);
+        fieldsPanel.add(new JLabel("Auth Card Count:"));
+        fieldsPanel.add(txtAuthCardCount);
         formPanel.add(fieldsPanel, BorderLayout.CENTER);
-
-        // 密碼卡新增按鈕（目前僅為介面）
-        btnAddAuthCode.addActionListener(e -> {
-            String input = JOptionPane.showInputDialog(teacherPanel, "Please enter new auth code:");
-            if (input != null && !input.trim().isEmpty()) {
-                JOptionPane.showMessageDialog(teacherPanel, "Auth code recorded: " + input);
-            }
-        });
 
         JPanel buttonPanel = new JPanel();
         JButton btnAddCourse = new JButton("Confirm Course Creation");
@@ -541,7 +533,7 @@ public class MainGUI extends JFrame {
         btnAddCourse.addActionListener(e -> {
             String code = txtCode.getText().trim();
             String name = txtName.getText().trim();
-            String authCode = ""; // txtAuthCode.getText().trim(); (改成密碼卡按鈕後，這裡先帶空字串)
+            String authCardCountStr = txtAuthCardCount.getText().trim();
             String creditsStr = txtCredits.getText().trim();
             String dayStr = txtDay.getText().trim();
             String startStr = txtStart.getText().trim();
@@ -559,10 +551,15 @@ public class MainGUI extends JFrame {
                 int start = Integer.parseInt(startStr);
                 int end = Integer.parseInt(endStr);
                 int maxCapacity = Integer.parseInt(txtCapacity.getText().trim());
+                int authCardCount = Integer.parseInt(authCardCountStr);
                 TimeSlot time = new TimeSlot(day, start, end);
 
-                system.createCourse(currentTeacher, code, name, credits, maxCapacity, time, authCode);
-                JOptionPane.showMessageDialog(teacherPanel, " Course [" + name + "] created successfully!");
+                List<String> authCodes = system.createCourseWithAuthCodes(currentTeacher, code, name, credits, maxCapacity, time, authCardCount);
+                String successMsg = " Course [" + name + "] created successfully!";
+                if (authCardCount > 0 && authCodes != null && !authCodes.isEmpty()) {
+                    successMsg += "\nGenerated Auth Codes:\n" + String.join("\n", authCodes);
+                }
+                JOptionPane.showMessageDialog(teacherPanel, successMsg);
 
                 txtCode.setText("");
                 txtName.setText("");
@@ -571,6 +568,7 @@ public class MainGUI extends JFrame {
                 txtStart.setText("");
                 txtEnd.setText("");
                 txtCapacity.setText("50");
+                txtAuthCardCount.setText("0");
                 refreshTeacherView();
             } catch (NumberFormatException ex) {
                 JOptionPane.showMessageDialog(teacherPanel,
