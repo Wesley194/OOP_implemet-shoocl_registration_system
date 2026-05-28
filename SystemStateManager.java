@@ -29,7 +29,8 @@ public class SystemStateManager {
         }
     }
 
-    private String getPhaseName(SystemPhase phase) {
+    // 改成public給前端用
+    public String getPhaseName(SystemPhase phase) {
         switch (phase) {
             case CLOSED: return "System shutdown";
             case PRE_ENROLL: return "Preliminary registration";

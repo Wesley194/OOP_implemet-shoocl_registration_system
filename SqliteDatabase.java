@@ -10,8 +10,8 @@ import java.util.Map;
 import java.util.HashMap;
 
 public class SqliteDatabase {
-    private static final String DB_URL = "jdbc:sqlite:test_my_system.db";
-    // private static final String DB_URL = "jdbc:sqlite:school_system.db";
+    // private static final String DB_URL = "jdbc:sqlite:test_my_system.db";
+    private static final String DB_URL = "jdbc:sqlite:school_system.db";
     private Connection connection;
 
     public SqliteDatabase() {
@@ -40,36 +40,75 @@ public class SqliteDatabase {
     }
 
     private void initializeTables() {
-        if (connection == null)
-            return;
-        String createAdminsTable = "CREATE TABLE IF NOT EXISTS admins (uid TEXT PRIMARY KEY, name TEXT NOT NULL, password TEXT NOT NULL);";
-        String createTeachersTable = "CREATE TABLE IF NOT EXISTS teachers (uid TEXT PRIMARY KEY, name TEXT NOT NULL, password TEXT NOT NULL);";
-        String createStudentsTable = "CREATE TABLE IF NOT EXISTS students (uid TEXT PRIMARY KEY, name TEXT NOT NULL, password TEXT NOT NULL);";
-        String createCoursesTable = "CREATE TABLE IF NOT EXISTS courses (course_id TEXT PRIMARY KEY, course_name TEXT NOT NULL, credits INTEGER NOT NULL, max_capacity INTEGER NOT NULL DEFAULT 50, day_of_week INTEGER NOT NULL, start_period INTEGER NOT NULL, end_period INTEGER NOT NULL, auth_code TEXT, teacher_id TEXT NOT NULL, FOREIGN KEY (teacher_id) REFERENCES teachers(uid) ON UPDATE CASCADE ON DELETE RESTRICT);";
-        String createEnrollmentsTable = "CREATE TABLE IF NOT EXISTS enrollments (student_id TEXT, course_id TEXT, score REAL, PRIMARY KEY (student_id, course_id), FOREIGN KEY (student_id) REFERENCES students(uid) ON UPDATE CASCADE ON DELETE CASCADE, FOREIGN KEY (course_id) REFERENCES courses(course_id) ON UPDATE CASCADE ON DELETE CASCADE);";
-        // 等待抽籤登記表(下方)
-        String createPendingTable = "CREATE TABLE IF NOT EXISTS pending_enrollments (student_id TEXT, course_id TEXT, PRIMARY KEY (student_id, course_id));";
+        if (connection == null) return;
 
         try (Statement stmt = connection.createStatement()) {
-            stmt.execute("PRAGMA foreign_keys = ON;"); // 開啟外鍵保護
-            stmt.execute(createAdminsTable);
-            stmt.execute(createTeachersTable);
-            stmt.execute(createStudentsTable);
-            stmt.execute(createCoursesTable);
-            stmt.execute(createEnrollmentsTable);
-            stmt.execute(createPendingTable);
+            stmt.execute(SqlQueries.ENABLE_FOREIGN_KEYS);
+            stmt.execute(SqlQueries.CREATE_ADMINS);
+            stmt.execute(SqlQueries.CREATE_TEACHERS);
+            stmt.execute(SqlQueries.CREATE_STUDENTS);
+            stmt.execute(SqlQueries.CREATE_COURSES);
+            stmt.execute(SqlQueries.CREATE_AUTH_CODES);
+            stmt.execute(SqlQueries.CREATE_ANNOUNCEMENTS);
+            ensureAnnouncementSchema(stmt);
+            stmt.execute(SqlQueries.CREATE_ENROLLMENTS);
+            stmt.execute(SqlQueries.CREATE_PENDING);
 
-            stmt.execute("INSERT OR IGNORE INTO admins (uid, name, password) VALUES ('admin', '超級管理員', 'admin123');"); // 預設管理員密碼
+            stmt.execute(SqlQueries.INSERT_DEFAULT_ADMIN);
+            
         } catch (SQLException e) {
-            System.err.println(" 建表失敗: " + e.getMessage());
+            System.err.println("建表失敗: " + e.getMessage());
+        }
+    }
+
+    private void ensureAnnouncementSchema(Statement stmt) throws SQLException {
+        boolean hasProfessorId = false;
+        boolean hasCourseId = false;
+        boolean hasCreatedAt = false;
+        boolean hasUpdatedAt = false;
+        boolean hasPostTime = false;
+        try (ResultSet rs = stmt.executeQuery("PRAGMA table_info(announcements)")) {
+            while (rs.next()) {
+                if ("professor_id".equals(rs.getString("name"))) {
+                    hasProfessorId = true;
+                }
+                if ("course_id".equals(rs.getString("name"))) {
+                    hasCourseId = true;
+                }
+                if ("created_at".equals(rs.getString("name"))) {
+                    hasCreatedAt = true;
+                }
+                if ("updated_at".equals(rs.getString("name"))) {
+                    hasUpdatedAt = true;
+                }
+                if ("post_time".equals(rs.getString("name"))) {
+                    hasPostTime = true;
+                }
+            }
+        }
+
+        if (!hasProfessorId) {
+            stmt.execute("ALTER TABLE announcements ADD COLUMN professor_id TEXT");
+        }
+        if (!hasCourseId) {
+            stmt.execute("ALTER TABLE announcements ADD COLUMN course_id TEXT");
+        }
+        if (!hasCreatedAt) {
+            stmt.execute("ALTER TABLE announcements ADD COLUMN created_at DATETIME");
+            if (hasPostTime) {
+                stmt.execute("UPDATE announcements SET created_at = post_time WHERE created_at IS NULL");
+            }
+        }
+        if (!hasUpdatedAt) {
+            stmt.execute("ALTER TABLE announcements ADD COLUMN updated_at DATETIME");
+            stmt.execute("UPDATE announcements SET updated_at = COALESCE(created_at, CURRENT_TIMESTAMP) WHERE updated_at IS NULL");
         }
     }
 
     // 2. 寫入資料 (INSERT)
     public void registerStudent(Student s) {
-        String sql = "INSERT INTO students (uid, name, password) VALUES (?, ?, ?)";
 
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.INSERT_STUDENT)) {
             pstmt.setString(1, s.getUid());
             pstmt.setString(2, s.getName());
             pstmt.setString(3, s.getPassword());
@@ -82,9 +121,7 @@ public class SqliteDatabase {
     }
 
     public void registerTeacher(Teacher t) {
-        String sql = "INSERT INTO teachers (uid, name, password) VALUES (?, ?, ?)";
-
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.INSERT_TEACHER)) {
             pstmt.setString(1, t.getUid());
             pstmt.setString(2, t.getName());
             pstmt.setString(3, t.getPassword());
@@ -95,16 +132,87 @@ public class SqliteDatabase {
         }
     }
 
-    // 3. 查詢資料 (SELECT)
-    public Student findStudent(String uid) {
-        String sql = "SELECT uid, name, password FROM students WHERE uid = ?";
+    public void addCourseToSystem(Course c) {
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.INSERT_COURSE)) {
+            pstmt.setString(1, c.getCourseId());
+            pstmt.setString(2, c.getCourseName());
+            pstmt.setInt(3, c.getCredits());
+            pstmt.setInt(4, c.getMaxCapacity());
+            pstmt.setInt(5, c.getTimeSlot().getDayOfWeek());
+            pstmt.setInt(6, c.getTimeSlot().getStartPeriod());
+            pstmt.setInt(7, c.getTimeSlot().getEndPeriod());
+            pstmt.setString(8, c.getTeacher().getUid());
 
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.executeUpdate();
+            System.out.println(" 課程 [" + c.getCourseName() + "] 已成功開課並寫入資料庫！");
+        } catch (SQLException e) {
+            if (e.getMessage().contains("UNIQUE constraint failed")) {
+                System.out.println(" 課程代碼 " + c.getCourseId() + " 已存在，略過新增。");
+            } else {
+                System.err.println(" 寫入課程失敗: " + e.getMessage());
+            }
+        }
+    }
+
+    public void insertAuthCode(String courseId, String code) {
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.INSERT_AUTH_CODE)) {
+            pstmt.setString(1, code);
+            pstmt.setString(2, courseId);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println(" 寫入密碼卡失敗: " + e.getMessage());
+        }
+    }
+
+    public void addAnnouncement(String courseId, String title, String content) {
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.INSERT_ANNOUNCEMENT)) {
+            pstmt.setString(1, courseId);
+            pstmt.setString(2, courseId);
+            pstmt.setString(3, title);
+            pstmt.setString(4, content);
+            pstmt.executeUpdate();
+            System.out.println(" 公告 [" + title + "] 已成功發布！");
+        } catch (SQLException e) {
+            System.err.println(" 發布公告失敗: " + e.getMessage());
+        }
+    }
+
+    public void saveEnrollment(Student student, Course course) {
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.INSERT_ENROLLMENT)) {
+            pstmt.setString(1, student.getUid());
+            pstmt.setString(2, course.getCourseId());
+            pstmt.executeUpdate();
+            System.out.println(" 選課成功！已將 [" + student.getName() + "] 加入 [" + course.getCourseName() + "]");
+        } catch (SQLException e) {
+            if (e.getMessage().contains("UNIQUE constraint failed")) {
+                System.out.println(" 選課失敗：這名學生已經選過這門課了！");
+            } else {
+                System.err.println(" 選課發生異常: " + e.getMessage());
+            }
+        }
+    }
+
+    public void savePendingEnrollment(Student student, Course course) throws Exception {
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.INSERT_PENDING_ENROLLMENT)) {
+            pstmt.setString(1, student.getUid());
+            pstmt.setString(2, course.getCourseId());
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            if (e.getMessage() != null && e.getMessage().toLowerCase().contains("unique")) {
+                throw new Exception("您已經登記過此課程，請等待抽籤結果。");
+            } else {
+                throw new Exception("資料庫異常: " + e.getMessage());
+            }
+        }
+    }
+
+    // 查詢資料 SELECT
+    public Student findStudent(String uid) {
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.FIND_STUDENT)) {
             pstmt.setString(1, uid);
 
             try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) { // 如果有找到資料
-                    // 把 SQL 裡的欄位拿出來，重新組裝成 Java 的 Student 物件
+                if (rs.next()) { 
                     return new Student(rs.getString("uid"), rs.getString("name"), rs.getString("password"));
                 }
             }
@@ -115,9 +223,7 @@ public class SqliteDatabase {
     }
 
     public Teacher findTeacher(String uid) {
-        String sql = "SELECT uid, name, password FROM teachers WHERE uid = ?";
-
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.FIND_TEACHER)) {
             pstmt.setString(1, uid);
 
             try (ResultSet rs = pstmt.executeQuery()) {
@@ -132,9 +238,7 @@ public class SqliteDatabase {
     }
 
     public Admin findAdmin(String uid) {
-        String sql = "SELECT uid, name, password FROM admins WHERE uid = ?";
-
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.FIND_ADMIN)) {
             pstmt.setString(1, uid);
 
             try (ResultSet rs = pstmt.executeQuery()) {
@@ -148,353 +252,368 @@ public class SqliteDatabase {
         return null;
     }
 
-    // 新增課程 (INSERT)
-    public void addCourseToSystem(Course c) {
-        String sql = "INSERT INTO courses (course_id, course_name, credits, max_capacity, day_of_week, start_period, end_period, auth_code, teacher_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setString(1, c.getCourseId());
-            pstmt.setString(2, c.getCourseName());
-            pstmt.setInt(3, c.getCredits());
-            pstmt.setInt(4, c.getMaxCapacity());
-
-            // 把 TimeSlot 物件拆解成 3 個數字存入
-            pstmt.setInt(5, c.getTimeSlot().getDayOfWeek());
-            pstmt.setInt(6, c.getTimeSlot().getStartPeriod());
-            pstmt.setInt(7, c.getTimeSlot().getEndPeriod());
-            pstmt.setString(8, c.getAuthCode());
-            // 把 Teacher 物件轉換成 uid 字串存入 (這就是 Foreign Key 外鍵)
-            pstmt.setString(9, c.getTeacher().getUid());
-
-            pstmt.executeUpdate();
-            System.out.println("課程 [" + c.getCourseName() + "] 已成功開課並寫入資料庫！");
-
-        } catch (SQLException e) {
-            if (e.getMessage().contains("UNIQUE constraint failed")) {
-                System.out.println("課程代碼 " + c.getCourseId() + " 已存在，略過新增。");
-            } else {
-                System.err.println("寫入課程失敗: " + e.getMessage());
-            }
-        }
-    }
-
-    // 撈取全校課程 (SELECT)
     public List<Course> getAllCourses() {
         List<Course> courseList = new ArrayList<>();
-        String sql = "SELECT * FROM courses";
-
-        try (PreparedStatement pstmt = connection.prepareStatement(sql);
-                ResultSet rs = pstmt.executeQuery()) {
-
-            // 使用 while 迴圈，把資料庫裡的課程「一筆一筆」讀出來
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.GET_ALL_COURSES);
+             ResultSet rs = pstmt.executeQuery()) {
             while (rs.next()) {
-                String cId = rs.getString("course_id");
-                String cName = rs.getString("course_name");
-                int credits = rs.getInt("credits");
-                int maxCap = rs.getInt("max_capacity");
-
-                // 1. 重新組裝 TimeSlot 物件
-                int day = rs.getInt("day_of_week");
-                int start = rs.getInt("start_period");
-                int end = rs.getInt("end_period");
-                TimeSlot ts = new TimeSlot(day, start, end);
-
-                // 2. 重新撈取 Teacher 物件 (直接呼叫我們剛剛寫好的 findTeacher！)
-                String tId = rs.getString("teacher_id");
-                Teacher t = findTeacher(tId);
-
-                // 3. 把所有零件組裝回 Course 物件，並加入到 List 裡
-                Course course = new Course(cId, cName, credits, maxCap, ts, t);
-                course.setAuthCode(rs.getString("auth_code"));
+                TimeSlot ts = new TimeSlot(rs.getInt("day_of_week"), rs.getInt("start_period"), rs.getInt("end_period"));
+                Teacher t = findTeacher(rs.getString("teacher_id"));
+                
+                Course course = new Course(rs.getString("course_id"), rs.getString("course_name"), 
+                                         rs.getInt("credits"), rs.getInt("max_capacity"), ts, t);
+                
                 loadEnrolledStudentsForCourse(course);
                 loadPendingStudentsForCourse(course);
                 courseList.add(course);
             }
-
-        } catch (SQLException e) {
-            System.err.println("查詢課程失敗: " + e.getMessage());
-        }
-
+        } catch (SQLException e) { System.err.println(" 查詢課程失敗: " + e.getMessage()); }
         return courseList;
     }
 
-    public List<Student> getAllStudents() {
+    // 課程搜尋系統
+    public List<Course> searchCourses(String keyword) {
+        List<Course> searchResults = new ArrayList<>();
+        
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.SEARCH_COURSES)) {
+            String searchPattern = "%" + keyword + "%";
+            
+            // 對應 SQL 裡面的三個問號 (名稱、代碼、老師名)
+            pstmt.setString(1, searchPattern);
+            pstmt.setString(2, searchPattern);
+            pstmt.setString(3, searchPattern);
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    TimeSlot ts = new TimeSlot(rs.getInt("day_of_week"), rs.getInt("start_period"), rs.getInt("end_period"));
+                    Teacher t = findTeacher(rs.getString("teacher_id"));
+                    
+                    Course course = new Course(rs.getString("course_id"), rs.getString("course_name"), 
+                                             rs.getInt("credits"), rs.getInt("max_capacity"), ts, t);
+                    
 
-        List<Student> studentList = new ArrayList<>();
-
-        String sql = "SELECT * FROM students";
-
-        try (PreparedStatement pstmt = connection.prepareStatement(sql);
-                ResultSet rs = pstmt.executeQuery()) {
-
-            while (rs.next()) {
-
-                String uid = rs.getString("uid");
-                String name = rs.getString("name");
-                String password = rs.getString("password");
-
-                Student s = new Student(uid, name, password);
-
-                studentList.add(s);
+                    loadEnrolledStudentsForCourse(course);
+                    loadPendingStudentsForCourse(course);
+                    
+                    searchResults.add(course);
+                }
             }
-
-        } catch (SQLException e) {
-            System.err.println("查詢學生失敗: " + e.getMessage());
+        } catch (SQLException e) { 
+            System.err.println(" 搜尋課程失敗: " + e.getMessage()); 
         }
+        
+        return searchResults;
+    }
 
-        return studentList;
+    public List<Student> getAllStudents() {
+        List<Student> list = new ArrayList<>();
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.GET_ALL_STUDENTS);
+             ResultSet rs = pstmt.executeQuery()) {
+            while (rs.next()) {
+                list.add(new Student(rs.getString("uid"), rs.getString("name"), rs.getString("password")));
+            }
+        } catch (SQLException e) { System.err.println(" 查詢學生失敗: " + e.getMessage()); }
+        return list;
     }
 
     public List<Teacher> getAllTeachers() {
-
-        List<Teacher> teacherList = new ArrayList<>();
-
-        String sql = "SELECT * FROM teachers";
-
-        try (PreparedStatement pstmt = connection.prepareStatement(sql);
-                ResultSet rs = pstmt.executeQuery()) {
-
+        List<Teacher> list = new ArrayList<>();
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.GET_ALL_TEACHERS);
+             ResultSet rs = pstmt.executeQuery()) {
             while (rs.next()) {
-
-                String uid = rs.getString("uid");
-                String name = rs.getString("name");
-                String password = rs.getString("password");
-
-                Teacher t = new Teacher(uid, name, password);
-
-                teacherList.add(t);
+                list.add(new Teacher(rs.getString("uid"), rs.getString("name"), rs.getString("password")));
             }
-
-        } catch (SQLException e) {
-            System.err.println("查詢教師失敗: " + e.getMessage());
-        }
-
-        return teacherList;
+        } catch (SQLException e) { System.err.println(" 查詢教師失敗: " + e.getMessage()); }
+        return list;
     }
 
-    // 學生選課 (寫入 enrollments 表)
-    public void saveEnrollment(Student student, Course course) {
-        // 只需要填入學號和課程代碼
-        String sql = "INSERT INTO enrollments (student_id, course_id) VALUES (?, ?)";
-
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setString(1, student.getUid());
-            pstmt.setString(2, course.getCourseId());
-
-            pstmt.executeUpdate();
-            System.out.println(" 選課成功！已將 [" + student.getName() + "] 加入 [" + course.getCourseName() + "]");
-
-        } catch (SQLException e) {
-            // 還記得我們設計的 PRIMARY KEY (student_id, course_id) 嗎？它在這裡發揮作用了！
-            if (e.getMessage().contains("UNIQUE constraint failed")) {
-                System.out.println(" 選課失敗：這名學生已經選過這門課了！");
-            } else {
-                System.err.println(" 選課發生異常: " + e.getMessage());
-            }
-        }
-    }
 
     // 查詢特定學生的所有選課 (SELECT + INNER JOIN)
     public List<Course> getStudentCourses(String studentUid) {
         List<Course> myCourses = new ArrayList<>();
-
-        // 從 courses 拿資料，條件為 enrollments 裡面的 course_id 等於 courses 的 course_id 和特定學號。
-        String sql = "SELECT c.* FROM courses c " +
-                "JOIN enrollments e ON c.course_id = e.course_id " +
-                "WHERE e.student_id = ?";
-
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.GET_STUDENT_COURSES)) {
             pstmt.setString(1, studentUid);
-
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
-                    // 跟 getAllCourses 一樣的還原流程
-                    String cId = rs.getString("course_id");
-                    String cName = rs.getString("course_name");
-                    int credits = rs.getInt("credits");
-                    int maxCap = rs.getInt("max_capacity");
-
-                    TimeSlot ts = new TimeSlot(rs.getInt("day_of_week"), rs.getInt("start_period"),
-                            rs.getInt("end_period"));
+                    TimeSlot ts = new TimeSlot(rs.getInt("day_of_week"), rs.getInt("start_period"), rs.getInt("end_period"));
                     Teacher t = findTeacher(rs.getString("teacher_id"));
+                    myCourses.add(new Course(rs.getString("course_id"), rs.getString("course_name"), 
+                                           rs.getInt("credits"), rs.getInt("max_capacity"), ts, t));
+                }
+            }
+        } catch (SQLException e) { System.err.println(" 查詢課表失敗: " + e.getMessage()); }
+        return myCourses;
+    }
 
-                    Course course = new Course(cId, cName, credits, maxCap, ts, t);
-                    myCourses.add(course);
+    // 取得學生的所有課程與對應成績 (回傳 Map)
+    public Map<Course, Double> getStudentGradesMap(String studentUid) {
+        Map<Course, Double> courseGrades = new HashMap<>();
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.GET_STUDENT_GRADES)) {
+            pstmt.setString(1, studentUid);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    TimeSlot ts = new TimeSlot(rs.getInt("day_of_week"), rs.getInt("start_period"), rs.getInt("end_period"));
+                    Teacher t = findTeacher(rs.getString("teacher_id"));
+                    Course course = new Course(rs.getString("course_id"), rs.getString("course_name"), 
+                                             rs.getInt("credits"), rs.getInt("max_capacity"), ts, t);
+                    
+                    double score = rs.getDouble("score");
+                    courseGrades.put(course, rs.wasNull() ? null : score);
+                }
+            }
+        } catch (SQLException e) { System.err.println(" 查詢成績表失敗: " + e.getMessage()); }
+        return courseGrades;
+    }
+
+    public List<Announcement> getCourseAnnouncements(String courseId) {
+        List<Announcement> announcements = new ArrayList<>();
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.GET_COURSE_ANNOUNCEMENTS)) {
+            pstmt.setString(1, courseId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Announcement a = new Announcement(
+                        rs.getInt("id"),
+                        rs.getString("title"),
+                        rs.getString("content"),
+                        rs.getString("course_id"),
+                        rs.getString("course_name"),
+                        rs.getString("professor_id"),
+                        rs.getString("professor_name"),
+                        rs.getString("created_at"),
+                        rs.getString("updated_at")
+                    );
+                    announcements.add(a);
                 }
             }
         } catch (SQLException e) {
-            System.err.println(" 查詢課表失敗: " + e.getMessage());
+            System.err.println("❌ 查詢公告失敗: " + e.getMessage());
         }
-
-        return myCourses;
+        return announcements;
     }
-    // 老師登記成績 (UPDATE)
 
+    public boolean createAnnouncement(Announcement announcement) {
+        if (isBlank(announcement.getTitle()) || isBlank(announcement.getContent())
+                || isBlank(announcement.getCourseId()) || isBlank(announcement.getProfessorId())) {
+            return false;
+        }
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.INSERT_GENERAL_ANNOUNCEMENT,
+                Statement.RETURN_GENERATED_KEYS)) {
+            pstmt.setString(1, announcement.getTitle().trim());
+            pstmt.setString(2, announcement.getContent().trim());
+            pstmt.setString(3, announcement.getCourseId());
+            pstmt.setString(4, announcement.getProfessorId());
+            if (pstmt.executeUpdate() > 0) {
+                try (ResultSet keys = pstmt.getGeneratedKeys()) {
+                    if (keys.next()) {
+                        announcement.setId(keys.getInt(1));
+                    }
+                }
+                return true;
+            }
+        } catch (SQLException e) {
+            System.err.println("Announcement creation failed: " + e.getMessage());
+        }
+        return false;
+    }
+
+    public List<Announcement> getAllAnnouncements() {
+        List<Announcement> announcements = new ArrayList<>();
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.GET_ALL_ANNOUNCEMENTS);
+             ResultSet rs = pstmt.executeQuery()) {
+            while (rs.next()) {
+                announcements.add(mapAnnouncement(rs));
+            }
+        } catch (SQLException e) {
+            System.err.println("Announcement query failed: " + e.getMessage());
+        }
+        return announcements;
+    }
+
+    public List<Announcement> getAnnouncementsByProfessor(String professorId) {
+        List<Announcement> announcements = new ArrayList<>();
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.GET_ANNOUNCEMENTS_BY_PROFESSOR)) {
+            pstmt.setString(1, professorId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    announcements.add(mapAnnouncement(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Professor announcement query failed: " + e.getMessage());
+        }
+        return announcements;
+    }
+
+    public List<Announcement> getAnnouncementsByProfessor(int professorId) {
+        return getAnnouncementsByProfessor(String.valueOf(professorId));
+    }
+
+    public Announcement getAnnouncementById(int announcementId) {
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.GET_ANNOUNCEMENT_BY_ID)) {
+            pstmt.setInt(1, announcementId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return mapAnnouncement(rs);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Announcement lookup failed: " + e.getMessage());
+        }
+        return null;
+    }
+
+    public boolean updateAnnouncement(Announcement announcement) {
+        if (isBlank(announcement.getTitle()) || isBlank(announcement.getContent())
+                || isBlank(announcement.getProfessorId())) {
+            return false;
+        }
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.UPDATE_ANNOUNCEMENT)) {
+            pstmt.setString(1, announcement.getTitle().trim());
+            pstmt.setString(2, announcement.getContent().trim());
+            pstmt.setInt(3, announcement.getId());
+            pstmt.setString(4, announcement.getProfessorId());
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("Announcement update failed: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean deleteAnnouncement(int announcementId, String professorId) {
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.DELETE_ANNOUNCEMENT)) {
+            pstmt.setInt(1, announcementId);
+            pstmt.setString(2, professorId);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("Announcement deletion failed: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean deleteAnnouncement(int announcementId, int professorId) {
+        return deleteAnnouncement(announcementId, String.valueOf(professorId));
+    }
+
+    private Announcement mapAnnouncement(ResultSet rs) throws SQLException {
+        return new Announcement(
+                rs.getInt("id"),
+                rs.getString("title"),
+                rs.getString("content"),
+                rs.getString("course_id"),
+                rs.getString("course_name"),
+                rs.getString("professor_id"),
+                rs.getString("professor_name"),
+                rs.getString("created_at"),
+                rs.getString("updated_at"));
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
+    }
+
+    public void hydrateCourseStudents(Course course) {
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.GET_COURSE_STUDENTS_WITH_GRADES)) {
+            pstmt.setString(1, course.getCourseId());
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Student s = new Student(rs.getString("uid"), rs.getString("name"), rs.getString("password"));
+                    double score = rs.getDouble("score");
+                    if (!rs.wasNull()) s.setGrade(course, score);
+                    course.addStudent(s);
+                }
+            }
+        } catch (SQLException e) { System.err.println(" 撈取修課名單失敗: " + e.getMessage()); }
+    }
+
+    private void loadPendingStudentsForCourse(Course course) {
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.GET_PENDING_STUDENTS)) {
+            pstmt.setString(1, course.getCourseId());
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                Student s = findStudent(rs.getString("student_id"));
+                if (s != null) course.addPendingStudent(s);
+            }
+        } catch (SQLException e) { System.err.println(" 讀取排隊名單失敗: " + e.getMessage()); }
+    }
+
+    private void loadEnrolledStudentsForCourse(Course course) {
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.GET_ENROLLED_STUDENTS)) {
+            pstmt.setString(1, course.getCourseId());
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                Student s = findStudent(rs.getString("student_id"));
+                if (s != null) course.addStudent(s);
+            }
+        } catch (SQLException e) { System.err.println(" 讀取正式名單失敗: " + e.getMessage()); }
+    }
+
+
+    //  更新與刪除 UPDATE & DELETE
     public boolean updateGrade(Student student, Course course, double score) {
-        String sql = "UPDATE enrollments SET score = ? WHERE student_id = ? AND course_id = ?";
-
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.UPDATE_GRADE)) {
             pstmt.setDouble(1, score);
             pstmt.setString(2, student.getUid());
             pstmt.setString(3, course.getCourseId());
-
-            int rowsAffected = pstmt.executeUpdate();
-
-            if (rowsAffected > 0) {
-                System.out
-                        .println(" 已將 [" + student.getName() + "] 的 [" + course.getCourseName() + "] 成績登記為: " + score);
+            if (pstmt.executeUpdate() > 0) {
+                System.out.println(" 已將 [" + student.getName() + "] 的 [" + course.getCourseName() + "] 成績登記為: " + score);
                 return true;
-            } else {
-                System.out.println(" 找不到該學生的選課紀錄。");
-                return false;
             }
+            System.out.println(" 找不到該學生的選課紀錄。");
+            return false;
         } catch (SQLException e) {
             System.err.println(" 成績登記失敗: " + e.getMessage());
             return false;
         }
     }
 
-    // 取得學生的所有課程與對應成績 (回傳 Map)
-    public Map<Course, Double> getStudentGradesMap(String studentUid) {
-        Map<Course, Double> courseGrades = new HashMap<>();
-
-        // 把課程資料 (c.*) 跟成績 (e.score) 一起撈出來
-        String sql = "SELECT c.*, e.score FROM courses c " +
-                "JOIN enrollments e ON c.course_id = e.course_id " +
-                "WHERE e.student_id = ?";
-
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setString(1, studentUid);
-
+    public void verifyAndConsumeAuthCode(Student student, Course course, String inputCode) throws Exception {
+        // 使用 SqlQueries 字典檔中的常數
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.CHECK_AUTH_CODE)) {
+            pstmt.setString(1, inputCode);
             try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    // 1. 還原 Course 物件 (這部分跟之前一樣)
-                    String cId = rs.getString("course_id");
-                    String cName = rs.getString("course_name");
-                    int credits = rs.getInt("credits");
-                    int maxCap = rs.getInt("max_capacity");
-                    TimeSlot ts = new TimeSlot(rs.getInt("day_of_week"), rs.getInt("start_period"),
-                            rs.getInt("end_period"));
-                    Teacher t = findTeacher(rs.getString("teacher_id"));
-
-                    Course course = new Course(cId, cName, credits, maxCap, ts, t);
-
-                    double score = rs.getDouble("score");
-                    if (rs.wasNull()) {
-                        // 如果資料庫裡真的是 NULL，我們存 null 到 Map 裡，前端才會顯示「尚未評分」
-                        courseGrades.put(course, null);
-                    } else {
-                        courseGrades.put(course, score);
-                    }
+                if (!rs.next()) {
+                    throw new Exception("找不到這組密碼卡，請確認是否輸入錯誤！");
+                }
+                
+                String targetCourseId = rs.getString("course_id");
+                if (!targetCourseId.equals(course.getCourseId())) {
+                    throw new Exception("這張密碼卡不屬於這門課！");
+                }
+                
+                int isUsed = rs.getInt("is_used");
+                if (isUsed == 1) {
+                    throw new Exception("這張密碼卡已經被用掉囉！");
                 }
             }
         } catch (SQLException e) {
-            System.err.println(" 查詢成績表失敗: " + e.getMessage());
+            throw new Exception("資料庫查詢異常: " + e.getMessage());
         }
-
-        return courseGrades;
-    }
-
-    public void hydrateCourseStudents(Course course) {
-        String sql = "SELECT s.uid, s.name, s.password, e.score FROM students s " +
-                "JOIN enrollments e ON s.uid = e.student_id " +
-                "WHERE e.course_id = ?";
-
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setString(1, course.getCourseId());
-
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    Student s = new Student(rs.getString("uid"), rs.getString("name"), rs.getString("password"));
-
-                    double score = rs.getDouble("score");
-                    if (!rs.wasNull()) {
-                        s.setGrade(course, score);
-                    }
-
-                    course.addStudent(s);
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println(" 撈取修課名單失敗: " + e.getMessage());
-        }
-    }
-
-    // 1. 學生登記抽籤
-    public void savePendingEnrollment(Student student, Course course) throws Exception {
-        String sql = "INSERT INTO pending_enrollments (student_id, course_id) VALUES (?, ?)";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setString(1, student.getUid());
-            pstmt.setString(2, course.getCourseId());
+        
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.UPDATE_AUTH_CODE_USED)) {
+            pstmt.setString(1, student.getUid()); 
+            pstmt.setString(2, inputCode);        
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            if (e.getMessage() != null && e.getMessage().toLowerCase().contains("unique")) {
-                throw new Exception("您已經登記過此課程，請等待抽籤結果。"); // 丟出防呆訊息
-            } else {
-                throw new Exception("資料庫異常: " + e.getMessage());
-            }
+            throw new Exception("更新密碼卡狀態失敗: " + e.getMessage());
         }
     }
 
-    // 2. 學生取消登記 (抽籤前)
     public void deletePendingEnrollment(Student student, Course course) {
-        String sql = "DELETE FROM pending_enrollments WHERE student_id = ? AND course_id = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.DELETE_PENDING_ENROLLMENT)) {
             pstmt.setString(1, student.getUid());
             pstmt.setString(2, course.getCourseId());
             pstmt.executeUpdate();
-        } catch (SQLException e) {
-            System.err.println("取消登記異常: " + e.getMessage());
-        }
+        } catch (SQLException e) { System.err.println(" 取消登記異常: " + e.getMessage()); }
     }
 
-    // 3. 學生正式退選 (抽籤後已在課表內)
     public boolean deleteEnrollment(Student student, Course course) {
-        String sql = "DELETE FROM enrollments WHERE student_id = ? AND course_id = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.DELETE_ENROLLMENT)) {
             pstmt.setString(1, student.getUid());
             pstmt.setString(2, course.getCourseId());
-            int rowsAffected = pstmt.executeUpdate();
-            return rowsAffected > 0;
+            return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("退選異常: " + e.getMessage());
+            System.err.println(" 退選異常: " + e.getMessage());
             return false;
-        }
-    }
-
-    // 撈取「排隊中」的學生
-    private void loadPendingStudentsForCourse(Course course) {
-        String sql = "SELECT student_id FROM pending_enrollments WHERE course_id = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setString(1, course.getCourseId());
-            ResultSet rs = pstmt.executeQuery();
-            while (rs.next()) {
-                String studentId = rs.getString("student_id");
-                Student s = findStudent(studentId); // 用學號把學生實體找出來
-                if (s != null) {
-                    course.addPendingStudent(s); // 塞進記憶體裡的排隊名單
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("讀取排隊名單失敗: " + e.getMessage());
-        }
-    }
-
-    // 撈取「已選上」的學生 (抽籤時要算剩餘名額，所以這個也很重要)
-    private void loadEnrolledStudentsForCourse(Course course) {
-        String sql = "SELECT student_id FROM enrollments WHERE course_id = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setString(1, course.getCourseId());
-            ResultSet rs = pstmt.executeQuery();
-            while (rs.next()) {
-                String studentId = rs.getString("student_id");
-                Student s = findStudent(studentId);
-                if (s != null) {
-                    course.addStudent(s); // 塞進記憶體裡的正式名單
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("讀取正式名單失敗: " + e.getMessage());
         }
     }
 }

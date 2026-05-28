@@ -1,6 +1,8 @@
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.List;
 import java.util.Map;
 
@@ -28,10 +30,13 @@ public class MainGUI extends JFrame {
     // --- 需要動態更新的介面元件 ---
     private JLabel lblStudentWelcome = new JLabel();
     private JComboBox<String> courseComboBox;
+    private JComboBox<String> teacherAnnouncementCourseCombo;
     private DefaultTableModel studentsTableModel;
     private JTable studentsTable;
     private DefaultTableModel allCoursesModel;
     private DefaultTableModel myCoursesModel;
+    private DefaultTableModel teacherAnnouncementModel;
+    private JTable teacherAnnouncementTable;
     private SchedulePanel studentSchedulePanel = new SchedulePanel();
     private SchedulePanel teacherSchedulePanel = new SchedulePanel();
     private JLabel lblTeacherWelcome = new JLabel();
@@ -40,7 +45,7 @@ public class MainGUI extends JFrame {
     public MainGUI() {
 
         // --- 2. 設定主視窗 ---
-        setTitle("學校行政管理系統");
+        setTitle("School Administration System");
         setSize(800, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null); // 視窗置中顯示
@@ -83,11 +88,11 @@ public class MainGUI extends JFrame {
         loginPanel.setLayout(new GridBagLayout());
         JPanel formPanel = new JPanel(new GridLayout(2, 2, 10, 10));
 
-        JLabel lblId = new JLabel("帳號 (學號/教師/管理員編號):");
+        JLabel lblId = new JLabel("ID (Student/Professor/Admin):");
         JTextField txtId = new JTextField(15);
-        JLabel lblPwd = new JLabel("密碼:");
+        JLabel lblPwd = new JLabel("Password:");
         JPasswordField txtPwd = new JPasswordField(15);
-        JButton btnLogin = new JButton("登入系統");
+        JButton btnLogin = new JButton("Login");
 
         // 🌟 採用組員的版本：登入畫面不再有註冊按鈕
         formPanel.add(lblId);
@@ -109,7 +114,8 @@ public class MainGUI extends JFrame {
             String uid = txtId.getText().trim();
             String pwd = new String(txtPwd.getPassword()).trim();
             if (uid.isEmpty() || pwd.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "請輸入完整帳號與密碼！", "輸入錯誤", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Please enter both ID and password!", "Input Error",
+                        JOptionPane.WARNING_MESSAGE);
                 return;
             }
 
@@ -126,34 +132,38 @@ public class MainGUI extends JFrame {
                     }
                 }
                 currentTeacher = t;
-                JOptionPane.showMessageDialog(this, "教授登入成功！歡迎 " + t.getName());
+                JOptionPane.showMessageDialog(this, "Professor login successful! Welcome " + t.getName());
                 refreshTeacherView();
                 cardLayout.show(mainContainer, "TeacherCard");
-                txtId.setText(""); txtPwd.setText(""); 
+                txtId.setText("");
+                txtPwd.setText("");
 
             } else if (s != null && s.verifyPassword(pwd)) {
                 Map<Course, Double> gradesMap = db.getStudentGradesMap(s.getUid());
                 for (Map.Entry<Course, Double> entry : gradesMap.entrySet()) {
                     Course c = entry.getKey();
                     Double score = entry.getValue();
-                    s.enrollInCourse(c); 
+                    s.enrollInCourse(c);
                     if (score != null) {
-                        s.setGrade(c, score); 
+                        s.setGrade(c, score);
                     }
                 }
                 currentStudent = s;
-                JOptionPane.showMessageDialog(this, "學生登入成功！歡迎 " + s.getName());
+                JOptionPane.showMessageDialog(this, "Student login successful! Welcome " + s.getName());
                 refreshStudentView();
                 cardLayout.show(mainContainer, "StudentCard");
-                txtId.setText(""); txtPwd.setText(""); 
+                txtId.setText("");
+                txtPwd.setText("");
 
             } else if (a != null && a.verifyPassword(pwd)) {
-                JOptionPane.showMessageDialog(this, "管理員登入成功！");
-                txtId.setText(""); txtPwd.setText(""); 
+                JOptionPane.showMessageDialog(this, "Admin login successful!");
+                txtId.setText("");
+                txtPwd.setText("");
                 refreshAdminView();
                 cardLayout.show(mainContainer, "AdminCard"); // 🌟 進入組員寫的管理員介面
             } else {
-                JOptionPane.showMessageDialog(this, "帳號或密碼錯誤！", "登入失敗", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Incorrect ID or password!", "Login Failed",
+                        JOptionPane.ERROR_MESSAGE);
             }
         });
     }
@@ -162,22 +172,26 @@ public class MainGUI extends JFrame {
     private void buildRegisterPanel() {
         registerPanel.setLayout(new GridBagLayout());
         JPanel formPanel = new JPanel(new GridLayout(5, 2, 10, 10));
-        formPanel.setBorder(BorderFactory.createTitledBorder("註冊新帳號"));
-        JLabel lblRole = new JLabel("身分:");
-        JComboBox<String> comboRole = new JComboBox<>(new String[]{"學生", "教授"});
-        JLabel lblId = new JLabel("帳號 (學號/教師編號):");
+        formPanel.setBorder(BorderFactory.createTitledBorder("Register New Account"));
+        JLabel lblRole = new JLabel("Role:");
+        JComboBox<String> comboRole = new JComboBox<>(new String[] { "Student", "Professor" });
+        JLabel lblId = new JLabel("ID (Student/Professor):");
         JTextField txtId = new JTextField(15);
-        JLabel lblName = new JLabel("姓名:");
+        JLabel lblName = new JLabel("Name:");
         JTextField txtName = new JTextField(15);
-        JLabel lblPwd = new JLabel("密碼:");
+        JLabel lblPwd = new JLabel("Password:");
         JPasswordField txtPwd = new JPasswordField(15);
-        JButton btnRegister = new JButton("確認註冊");
-        
-        formPanel.add(lblRole); formPanel.add(comboRole);
-        formPanel.add(lblId);   formPanel.add(txtId);
-        formPanel.add(lblName); formPanel.add(txtName);
-        formPanel.add(lblPwd);  formPanel.add(txtPwd);
-        formPanel.add(new JLabel("")); 
+        JButton btnRegister = new JButton("Confirm Registration");
+
+        formPanel.add(lblRole);
+        formPanel.add(comboRole);
+        formPanel.add(lblId);
+        formPanel.add(txtId);
+        formPanel.add(lblName);
+        formPanel.add(txtName);
+        formPanel.add(lblPwd);
+        formPanel.add(txtPwd);
+        formPanel.add(new JLabel(""));
         formPanel.add(btnRegister);
         registerPanel.add(formPanel);
 
@@ -187,24 +201,29 @@ public class MainGUI extends JFrame {
             String name = txtName.getText().trim();
             String pwd = new String(txtPwd.getPassword()).trim();
             if (uid.isEmpty() || name.isEmpty() || pwd.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "請填寫完整資訊！", "註冊失敗", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Please fill in all fields!", "Registration Failed",
+                        JOptionPane.ERROR_MESSAGE);
                 return;
             }
-            if ("學生".equals(role)) {
+            if ("Student".equals(role)) {
                 if (db.findStudent(uid) != null) {
-                    JOptionPane.showMessageDialog(this, "該學號已存在！", "註冊失敗", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(this, "This student ID already exists!", "Registration Failed",
+                            JOptionPane.ERROR_MESSAGE);
                     return;
                 }
                 db.registerStudent(new Student(uid, name, pwd));
             } else {
                 if (db.findTeacher(uid) != null) {
-                    JOptionPane.showMessageDialog(this, "該教師編號已存在！", "註冊失敗", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(this, "This professor ID already exists!", "Registration Failed",
+                            JOptionPane.ERROR_MESSAGE);
                     return;
                 }
                 db.registerTeacher(new Teacher(uid, name, pwd));
             }
-            JOptionPane.showMessageDialog(this, "註冊成功！");
-            txtId.setText(""); txtName.setText(""); txtPwd.setText("");
+            JOptionPane.showMessageDialog(this, "Registration successful!");
+            txtId.setText("");
+            txtName.setText("");
+            txtPwd.setText("");
         });
     }
 
@@ -213,11 +232,11 @@ public class MainGUI extends JFrame {
         studentPanel.setLayout(new BorderLayout());
 
         JPanel topPanel = new JPanel(new BorderLayout());
-        lblStudentWelcome.setFont(new Font("微軟正黑體", Font.BOLD, 16));
+        lblStudentWelcome.setFont(new Font("Segoe UI", Font.BOLD, 16));
         lblStudentWelcome.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         topPanel.add(lblStudentWelcome, BorderLayout.WEST);
-        
-        JButton btnLogout = new JButton("登出");
+
+        JButton btnLogout = new JButton("Logout");
         btnLogout.addActionListener(e -> {
             currentStudent = null;
             cardLayout.show(mainContainer, "LoginCard");
@@ -229,8 +248,8 @@ public class MainGUI extends JFrame {
 
         // 分頁 1：瀏覽與選課
         JPanel enrollPanel = new JPanel(new BorderLayout());
-        String[] allCols = {"課程代碼", "課程名稱", "學分", "授課教師", "星期（節次）"};
-        allCoursesModel = new DefaultTableModel(allCols, 0){
+        String[] allCols = { "Course ID", "Course Name", "Credits", "Professor", "Time" };
+        allCoursesModel = new DefaultTableModel(allCols, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
@@ -244,13 +263,13 @@ public class MainGUI extends JFrame {
         allCoursesTable.getColumnModel().getColumn(2).setPreferredWidth(30);
         allCoursesTable.getColumnModel().getColumn(3).setPreferredWidth(80);
         allCoursesTable.getColumnModel().getColumn(4).setPreferredWidth(80);
-        
+
         enrollPanel.add(new JScrollPane(allCoursesTable), BorderLayout.CENTER);
 
         JPanel bottomActionPanel = new JPanel();
-        JButton btnEnroll = new JButton("登記抽籤 / 一般加選");
-        JButton btnCancelPending = new JButton("取消登記");
-        JButton btnForceEnroll = new JButton("密碼卡加簽");
+        JButton btnEnroll = new JButton("Register for Lottery / Normal Add");
+        JButton btnCancelPending = new JButton("Cancel Registration");
+        JButton btnForceEnroll = new JButton("Force Add with Auth Code");
         bottomActionPanel.add(btnEnroll);
         bottomActionPanel.add(btnCancelPending);
         bottomActionPanel.add(btnForceEnroll);
@@ -260,23 +279,25 @@ public class MainGUI extends JFrame {
         btnEnroll.addActionListener(e -> {
             int row = allCoursesTable.getSelectedRow();
             if (row == -1) {
-                JOptionPane.showMessageDialog(this, "請先在表格中點選一門課程！", "提示", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Please select a course from the table first!", "Hint",
+                        JOptionPane.WARNING_MESSAGE);
                 return;
             }
             Course selectedCourse = db.getAllCourses().get(row);
             try {
                 if (system.getCurrentPhase() == SystemStateManager.SystemPhase.PRE_ENROLL) {
                     system.registerForLottery(currentStudent, selectedCourse);
-                    JOptionPane.showMessageDialog(this, "✅ 登記成功！請等待抽籤結果。");
+                    JOptionPane.showMessageDialog(this, "Registration successful! Please wait for lottery results.");
                 } else if (system.getCurrentPhase() == SystemStateManager.SystemPhase.ADD_DROP) {
                     system.normalEnroll(currentStudent, selectedCourse);
-                    JOptionPane.showMessageDialog(this, "✅ 加選成功！您已成功搶到名額！");
+                    JOptionPane.showMessageDialog(this, "Course added successfully!");
                 } else {
-                    JOptionPane.showMessageDialog(this, "⛔ 現在系統關閉或正在抽籤，無法選課！", "時段錯誤", JOptionPane.WARNING_MESSAGE);
+                    JOptionPane.showMessageDialog(this, "System is closed or running lottery, cannot enroll now!",
+                            "Phase Error", JOptionPane.WARNING_MESSAGE);
                 }
-                refreshStudentView(); 
+                refreshStudentView();
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, ex.getMessage(), "操作失敗", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, ex.getMessage(), "Operation Failed", JOptionPane.ERROR_MESSAGE);
             }
         });
 
@@ -284,16 +305,17 @@ public class MainGUI extends JFrame {
         btnCancelPending.addActionListener(e -> {
             int row = allCoursesTable.getSelectedRow();
             if (row == -1) {
-                JOptionPane.showMessageDialog(this, "請先在表格中點選一門想取消的課程！", "提示", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Please select a course to cancel from the table!", "Hint",
+                        JOptionPane.WARNING_MESSAGE);
                 return;
             }
             Course selectedCourse = db.getAllCourses().get(row);
             try {
                 system.cancelPendingCourse(currentStudent, selectedCourse);
-                JOptionPane.showMessageDialog(this, "✅ 取消登記成功！");
-                refreshStudentView(); 
+                JOptionPane.showMessageDialog(this, "Registration cancelled successfully!");
+                refreshStudentView();
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, ex.getMessage(), "操作失敗", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, ex.getMessage(), "Operation Failed", JOptionPane.ERROR_MESSAGE);
             }
         });
 
@@ -301,28 +323,29 @@ public class MainGUI extends JFrame {
         btnForceEnroll.addActionListener(e -> {
             int row = allCoursesTable.getSelectedRow();
             if (row == -1) {
-                JOptionPane.showMessageDialog(this, "請先在表格中點選一門要加簽的課程！", "提示", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Please select a course to force add from the table!", "Hint",
+                        JOptionPane.WARNING_MESSAGE);
                 return;
             }
             Course selectedCourse = db.getAllCourses().get(row);
-            String inputCode = JOptionPane.showInputDialog(this, 
-                "請輸入 [" + selectedCourse.getCourseName() + "] 的加簽密碼：\n(若無密碼請按取消)", 
-                "密碼卡強制加簽", JOptionPane.QUESTION_MESSAGE);
-            
+            String inputCode = JOptionPane.showInputDialog(this,
+                    "Please enter the auth code for [" + selectedCourse.getCourseName() + "]:\n(Cancel if none)",
+                    "Force Add with Auth Code", JOptionPane.QUESTION_MESSAGE);
+
             if (inputCode != null && !inputCode.trim().isEmpty()) {
                 try {
                     system.forceEnrollWithPassword(currentStudent, selectedCourse, inputCode.trim());
-                    JOptionPane.showMessageDialog(this, "🎉 加簽成功！您已使用密碼卡強制加入該課程！");
-                    refreshStudentView(); 
+                    JOptionPane.showMessageDialog(this, "Force add successful!");
+                    refreshStudentView();
                 } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(this, ex.getMessage(), "加簽失敗", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(this, ex.getMessage(), "Force Add Failed", JOptionPane.ERROR_MESSAGE);
                 }
             }
         });
 
         // 分頁 2：我的成績與退選
         JPanel myGradesPanel = new JPanel(new BorderLayout());
-        String[] myCols = {"課程代碼", "課程名稱", "學分", "授課教師", "星期（節次）", "成績"};
+        String[] myCols = { "Course ID", "Course Name", "Credits", "Professor", "Time", "Grade" };
         myCoursesModel = new DefaultTableModel(myCols, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -332,39 +355,56 @@ public class MainGUI extends JFrame {
         JTable myCoursesTable = new JTable(myCoursesModel);
         myCoursesTable.setRowHeight(25);
         myCoursesTable.getTableHeader().setReorderingAllowed(false);
-        myCoursesTable.getColumnModel().getColumn(0).setPreferredWidth(60); 
+        myCoursesTable.getColumnModel().getColumn(0).setPreferredWidth(60);
         myCoursesTable.getColumnModel().getColumn(1).setPreferredWidth(130);
-        myCoursesTable.getColumnModel().getColumn(2).setPreferredWidth(10); 
-        myCoursesTable.getColumnModel().getColumn(3).setPreferredWidth(40); 
-        myCoursesTable.getColumnModel().getColumn(4).setPreferredWidth(80); 
-        myCoursesTable.getColumnModel().getColumn(5).setPreferredWidth(70); 
+        myCoursesTable.getColumnModel().getColumn(2).setPreferredWidth(10);
+        myCoursesTable.getColumnModel().getColumn(3).setPreferredWidth(40);
+        myCoursesTable.getColumnModel().getColumn(4).setPreferredWidth(80);
+        myCoursesTable.getColumnModel().getColumn(5).setPreferredWidth(70);
         myGradesPanel.add(new JScrollPane(myCoursesTable), BorderLayout.CENTER);
 
-        JButton btnDrop = new JButton("正式退選該課程");
-        myGradesPanel.add(btnDrop, BorderLayout.SOUTH);
+        JPanel myCourseActions = new JPanel();
+        JButton btnDrop = new JButton("Drop Course");
+        JButton btnViewAnnouncements = new JButton("View Announcements");
+        myCourseActions.add(btnDrop);
+        myCourseActions.add(btnViewAnnouncements);
+        myGradesPanel.add(myCourseActions, BorderLayout.SOUTH);
 
         btnDrop.addActionListener(e -> {
             int row = myCoursesTable.getSelectedRow();
             if (row == -1) {
-                JOptionPane.showMessageDialog(this, "請先在表格中點選一門要退選的課程！", "提示", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Please select a course to drop from the table!", "Hint",
+                        JOptionPane.WARNING_MESSAGE);
                 return;
             }
             Course selectedCourse = currentStudent.getMyCourses().get(row);
-            int confirm = JOptionPane.showConfirmDialog(this, "確定要退選 [" + selectedCourse.getCourseName() + "] 嗎？", "退選確認", JOptionPane.YES_NO_OPTION);
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "Are you sure you want to drop [" + selectedCourse.getCourseName() + "]?", "Confirm Drop",
+                    JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
                 try {
                     system.dropEnrolledCourse(currentStudent, selectedCourse);
-                    JOptionPane.showMessageDialog(this, "退選成功！");
-                    refreshStudentView(); 
+                    JOptionPane.showMessageDialog(this, "Course dropped successfully!");
+                    refreshStudentView();
                 } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(this, ex.getMessage(), "退選失敗", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(this, ex.getMessage(), "Drop Failed", JOptionPane.ERROR_MESSAGE);
                 }
             }
         });
 
-        tabbedPane.addTab("瀏覽全校課程", enrollPanel);
-        tabbedPane.addTab("我的課表", studentSchedulePanel);
-        tabbedPane.addTab("我的成績", myGradesPanel);
+        btnViewAnnouncements.addActionListener(e -> {
+            int row = myCoursesTable.getSelectedRow();
+            if (row == -1) {
+                JOptionPane.showMessageDialog(this, "Please select a course first.", "Hint",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            showCourseAnnouncements(currentStudent.getMyCourses().get(row));
+        });
+
+        tabbedPane.addTab("Browse All Courses", enrollPanel);
+        tabbedPane.addTab("My Schedule", studentSchedulePanel);
+        tabbedPane.addTab("My Grades", myGradesPanel);
         studentPanel.add(tabbedPane, BorderLayout.CENTER);
     }
 
@@ -373,19 +413,23 @@ public class MainGUI extends JFrame {
         for (Course c : currentStudent.getMyCourses()) {
             totalCredits += c.getCredits();
         }
-        lblStudentWelcome.setText("學生：" + currentStudent.getName() + " | 總學分: " + totalCredits + " | GPA: " + system.calculateGPA(currentStudent) + " | 階段: " + system.getCurrentPhase());
-        
+        lblStudentWelcome.setText("Student: " + currentStudent.getName() + " | Total Credits: " + totalCredits
+                + " | GPA: " + system.calculateGPA(currentStudent) + " | Phase: "
+                + system.getPhaseName(system.getCurrentPhase()));
+
         allCoursesModel.setRowCount(0);
         for (Course c : db.getAllCourses()) {
-            allCoursesModel.addRow(new Object[]{c.getCourseId(), c.getCourseName(), c.getCredits(), c.getTeacher().getName(), c.getTimeSlot().toString()});
+            allCoursesModel.addRow(new Object[] { c.getCourseId(), c.getCourseName(), c.getCredits(),
+                    c.getTeacher().getName(), c.getTimeSlot().toString() });
         }
 
         myCoursesModel.setRowCount(0);
         Map<Course, Double> grades = currentStudent.getCourseGrades();
         for (Course c : currentStudent.getMyCourses()) {
             Double score = grades.get(c);
-            String scoreStr = (score == null) ? "尚未評分" : score.toString();
-            myCoursesModel.addRow(new Object[]{c.getCourseId(), c.getCourseName(), c.getCredits(), c.getTeacher().getName(), c.getTimeSlot().toString(), scoreStr});
+            String scoreStr = (score == null) ? "Not Graded" : score.toString();
+            myCoursesModel.addRow(new Object[] { c.getCourseId(), c.getCourseName(), c.getCredits(),
+                    c.getTeacher().getName(), c.getTimeSlot().toString(), scoreStr });
         }
 
         studentSchedulePanel.updateCourses(currentStudent.getMyCourses(), true);
@@ -396,11 +440,11 @@ public class MainGUI extends JFrame {
         teacherPanel.setLayout(new BorderLayout());
 
         JPanel topPanel = new JPanel(new BorderLayout());
-        lblTeacherWelcome.setFont(new Font("微軟正黑體", Font.BOLD, 14));
+        lblTeacherWelcome.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblTeacherWelcome.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         topPanel.add(lblTeacherWelcome, BorderLayout.WEST);
 
-        JButton btnLogout = new JButton("登出");
+        JButton btnLogout = new JButton("Logout");
         btnLogout.addActionListener(e -> {
             currentTeacher = null;
             cardLayout.show(mainContainer, "LoginCard");
@@ -413,7 +457,7 @@ public class MainGUI extends JFrame {
         // ====== 分頁 1：新增課程 ======
         JPanel formContainer = new JPanel(new GridBagLayout());
         JPanel formPanel = new JPanel(new BorderLayout(0, 15));
-        formPanel.setBorder(BorderFactory.createTitledBorder("開設新課程"));
+        formPanel.setBorder(BorderFactory.createTitledBorder("Create New Course"));
 
         JPanel fieldsPanel = new JPanel(new GridLayout(8, 2, 10, 10));
         JTextField txtCode = new JTextField(12);
@@ -423,19 +467,35 @@ public class MainGUI extends JFrame {
         JTextField txtStart = new JTextField(12);
         JTextField txtEnd = new JTextField(12);
         JTextField txtCapacity = new JTextField("50", 12);
-        JTextField txtAuthCode = new JTextField(12);
-        fieldsPanel.add(new JLabel("課程代碼 (例 CS103):")); fieldsPanel.add(txtCode);
-        fieldsPanel.add(new JLabel("課程名稱:")); fieldsPanel.add(txtName);
-        fieldsPanel.add(new JLabel("學分數:")); fieldsPanel.add(txtCredits);
-        fieldsPanel.add(new JLabel("上課星期 (1~5):")); fieldsPanel.add(txtDay);
-        fieldsPanel.add(new JLabel("開始節次 (例如 2):")); fieldsPanel.add(txtStart);
-        fieldsPanel.add(new JLabel("結束節次 (例如 4):")); fieldsPanel.add(txtEnd);
-        fieldsPanel.add(new JLabel("人數上限 (預設50):")); fieldsPanel.add(txtCapacity);
-        fieldsPanel.add(new JLabel("加簽密碼(不開放請留白):")); fieldsPanel.add(txtAuthCode);
+        JButton btnAddAuthCode = new JButton("Add Auth Code");
+        fieldsPanel.add(new JLabel("Course ID (e.g., CS103):"));
+        fieldsPanel.add(txtCode);
+        fieldsPanel.add(new JLabel("Course Name:"));
+        fieldsPanel.add(txtName);
+        fieldsPanel.add(new JLabel("Credits:"));
+        fieldsPanel.add(txtCredits);
+        fieldsPanel.add(new JLabel("Day of Week (1~5):"));
+        fieldsPanel.add(txtDay);
+        fieldsPanel.add(new JLabel("Start Period (e.g., 2):"));
+        fieldsPanel.add(txtStart);
+        fieldsPanel.add(new JLabel("End Period (e.g., 4):"));
+        fieldsPanel.add(txtEnd);
+        fieldsPanel.add(new JLabel("Capacity (default 50):"));
+        fieldsPanel.add(txtCapacity);
+        fieldsPanel.add(new JLabel("Auth Code Setting:"));
+        fieldsPanel.add(btnAddAuthCode);
         formPanel.add(fieldsPanel, BorderLayout.CENTER);
 
-        JPanel buttonPanel = new JPanel(); 
-        JButton btnAddCourse = new JButton("確認開課");
+        // 密碼卡新增按鈕（目前僅為介面）
+        btnAddAuthCode.addActionListener(e -> {
+            String input = JOptionPane.showInputDialog(teacherPanel, "Please enter new auth code:");
+            if (input != null && !input.trim().isEmpty()) {
+                JOptionPane.showMessageDialog(teacherPanel, "Auth code recorded: " + input);
+            }
+        });
+
+        JPanel buttonPanel = new JPanel();
+        JButton btnAddCourse = new JButton("Confirm Course Creation");
         buttonPanel.add(btnAddCourse);
         formPanel.add(buttonPanel, BorderLayout.SOUTH);
 
@@ -446,14 +506,16 @@ public class MainGUI extends JFrame {
         btnAddCourse.addActionListener(e -> {
             String code = txtCode.getText().trim();
             String name = txtName.getText().trim();
-            String authCode = txtAuthCode.getText().trim();
+            String authCode = ""; // txtAuthCode.getText().trim(); (改成密碼卡按鈕後，這裡先帶空字串)
             String creditsStr = txtCredits.getText().trim();
             String dayStr = txtDay.getText().trim();
             String startStr = txtStart.getText().trim();
             String endStr = txtEnd.getText().trim();
-            
-            if (code.isEmpty() || name.isEmpty() || creditsStr.isEmpty() || dayStr.isEmpty() || startStr.isEmpty() || endStr.isEmpty()) {
-                JOptionPane.showMessageDialog(teacherPanel, "請填寫完整的所有課程資訊！", "資料不完整", JOptionPane.WARNING_MESSAGE);
+
+            if (code.isEmpty() || name.isEmpty() || creditsStr.isEmpty() || dayStr.isEmpty() || startStr.isEmpty()
+                    || endStr.isEmpty()) {
+                JOptionPane.showMessageDialog(teacherPanel, "Please fill in all course information!", "Incomplete Data",
+                        JOptionPane.WARNING_MESSAGE);
                 return;
             }
             try {
@@ -465,28 +527,35 @@ public class MainGUI extends JFrame {
                 TimeSlot time = new TimeSlot(day, start, end);
 
                 system.createCourse(currentTeacher, code, name, credits, maxCapacity, time, authCode);
-                JOptionPane.showMessageDialog(teacherPanel, " 課程 [" + name + "] 新增成功！");
-                
-                txtCode.setText(""); txtName.setText(""); txtCredits.setText("");
-                txtDay.setText(""); txtStart.setText(""); txtEnd.setText("");
-                txtCapacity.setText("50"); txtAuthCode.setText("");
+                JOptionPane.showMessageDialog(teacherPanel, " Course [" + name + "] created successfully!");
+
+                txtCode.setText("");
+                txtName.setText("");
+                txtCredits.setText("");
+                txtDay.setText("");
+                txtStart.setText("");
+                txtEnd.setText("");
+                txtCapacity.setText("50");
                 refreshTeacherView();
             } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(teacherPanel, "請檢查輸入格式，學分與時間必須為數字！", "格式錯誤", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(teacherPanel,
+                        "Please check input format, credits and periods must be numbers!", "Format Error",
+                        JOptionPane.ERROR_MESSAGE);
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(teacherPanel, ex.getMessage(), "開課失敗", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(teacherPanel, ex.getMessage(), "Course Creation Failed",
+                        JOptionPane.ERROR_MESSAGE);
             }
         });
 
         // ====== 分頁 2：登記成績 ======
         JPanel gradePanel = new JPanel(new BorderLayout());
         JPanel selectCoursePanel = new JPanel();
-        selectCoursePanel.add(new JLabel("請選擇您的課程: "));
+        selectCoursePanel.add(new JLabel("Please select your course: "));
         courseComboBox = new JComboBox<>();
         selectCoursePanel.add(courseComboBox);
         gradePanel.add(selectCoursePanel, BorderLayout.NORTH);
 
-        String[] cols = {"學生學號", "學生姓名", "目前成績"};
+        String[] cols = { "Student ID", "Student Name", "Current Grade" };
         studentsTableModel = new DefaultTableModel(cols, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -499,10 +568,10 @@ public class MainGUI extends JFrame {
         gradePanel.add(new JScrollPane(studentsTable), BorderLayout.CENTER);
 
         JPanel inputGradePanel = new JPanel();
-        inputGradePanel.add(new JLabel("為表格中選取的學生輸入分數 (0~100): "));
+        inputGradePanel.add(new JLabel("Enter grade for selected student (0~100): "));
         JTextField txtScore = new JTextField(5);
         inputGradePanel.add(txtScore);
-        JButton btnGrade = new JButton("登記成績");
+        JButton btnGrade = new JButton("Submit Grade");
         inputGradePanel.add(btnGrade);
         gradePanel.add(inputGradePanel, BorderLayout.SOUTH);
 
@@ -513,13 +582,14 @@ public class MainGUI extends JFrame {
             int selectedStudentRow = studentsTable.getSelectedRow();
 
             if (selectedCourseIndex == -1 || selectedStudentRow == -1) {
-                JOptionPane.showMessageDialog(teacherPanel, "請選擇課程並在表格中點選一位學生！");
+                JOptionPane.showMessageDialog(teacherPanel, "Please select a course and a student from the table!");
                 return;
             }
 
             String scoreStr = txtScore.getText().trim();
             if (scoreStr.isEmpty()) {
-                JOptionPane.showMessageDialog(teacherPanel, "請輸入分數！", "輸入錯誤", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(teacherPanel, "Please enter a grade!", "Input Error",
+                        JOptionPane.WARNING_MESSAGE);
                 return;
             }
 
@@ -530,37 +600,291 @@ public class MainGUI extends JFrame {
 
                 boolean success = system.gradeStudent(currentTeacher, targetStudent, selectedCourse, score);
                 if (success) {
-                    JOptionPane.showMessageDialog(teacherPanel, " 成績登記成功！");
-                    txtScore.setText(""); 
+                    JOptionPane.showMessageDialog(teacherPanel, " Grade submitted successfully!");
+                    txtScore.setText("");
                     updateStudentsTable();
                 } else {
-                    JOptionPane.showMessageDialog(teacherPanel, " 系統拒絕登記。", "錯誤", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(teacherPanel, " System rejected submission.", "Error",
+                            JOptionPane.ERROR_MESSAGE);
                 }
             } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(teacherPanel, "分數必須為數字！", "格式錯誤", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(teacherPanel, "Grade must be a number!", "Format Error",
+                        JOptionPane.ERROR_MESSAGE);
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(teacherPanel, ex.getMessage(), "成績登記失敗", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(teacherPanel, ex.getMessage(), "Grade Submission Failed",
+                        JOptionPane.ERROR_MESSAGE);
             }
         });
 
-        tabbedPane.addTab("新增課程", addCoursePanel);
-        tabbedPane.addTab("學生名單與登記成績", gradePanel);
-        tabbedPane.addTab("我的課表", teacherSchedulePanel);
+        tabbedPane.addTab("Create Course", addCoursePanel);
+        tabbedPane.addTab("Student List & Grading", gradePanel);
+        tabbedPane.addTab("My Schedule", teacherSchedulePanel);
+        tabbedPane.addTab("Announcements", buildTeacherAnnouncementsPanel());
 
         teacherPanel.add(tabbedPane, BorderLayout.CENTER);
     }
 
+    private JPanel buildTeacherAnnouncementsPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        JPanel selector = new JPanel();
+        selector.add(new JLabel("Course: "));
+        teacherAnnouncementCourseCombo = new JComboBox<>();
+        selector.add(teacherAnnouncementCourseCombo);
+        panel.add(selector, BorderLayout.NORTH);
+
+        String[] cols = { "ID", "Course", "Title", "Created" };
+        teacherAnnouncementModel = new DefaultTableModel(cols, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        teacherAnnouncementTable = new JTable(teacherAnnouncementModel);
+        teacherAnnouncementTable.setRowHeight(25);
+        teacherAnnouncementTable.getTableHeader().setReorderingAllowed(false);
+        addAnnouncementDoubleClickHandler(teacherAnnouncementTable);
+        panel.add(new JScrollPane(teacherAnnouncementTable), BorderLayout.CENTER);
+
+        JPanel buttons = new JPanel();
+        JButton btnPublish = new JButton("Publish");
+        JButton btnRead = new JButton("Read Selected");
+        JButton btnEdit = new JButton("Edit Selected");
+        JButton btnDelete = new JButton("Delete Selected");
+        JButton btnRefresh = new JButton("Refresh");
+        buttons.add(btnPublish);
+        buttons.add(btnRead);
+        buttons.add(btnEdit);
+        buttons.add(btnDelete);
+        buttons.add(btnRefresh);
+        panel.add(buttons, BorderLayout.SOUTH);
+
+        btnPublish.addActionListener(e -> publishAnnouncement());
+        btnRead.addActionListener(e -> readSelectedTeacherAnnouncement());
+        btnEdit.addActionListener(e -> editSelectedTeacherAnnouncement());
+        btnDelete.addActionListener(e -> deleteSelectedTeacherAnnouncement());
+        btnRefresh.addActionListener(e -> refreshTeacherAnnouncements());
+        teacherAnnouncementCourseCombo.addActionListener(e -> refreshTeacherAnnouncements());
+        return panel;
+    }
+
     private void refreshTeacherView() {
-        if (currentTeacher == null) return;
-        lblTeacherWelcome.setText("教授：" + currentTeacher.getName() + " | 目前階段: " + system.getCurrentPhase());
+        if (currentTeacher == null)
+            return;
+        lblTeacherWelcome.setText("Professor: " + currentTeacher.getName() + " | Phase: "
+                + system.getPhaseName(system.getCurrentPhase()));
 
         courseComboBox.removeAllItems();
         List<Course> myCourses = currentTeacher.getTeachingCourses();
         for (Course c : myCourses) {
             courseComboBox.addItem(c.getCourseName() + " (" + c.getCourseId() + ")");
         }
+        if (teacherAnnouncementCourseCombo != null) {
+            teacherAnnouncementCourseCombo.removeAllItems();
+            for (Course c : myCourses) {
+                teacherAnnouncementCourseCombo.addItem(c.getCourseName() + " (" + c.getCourseId() + ")");
+            }
+        }
         updateStudentsTable();
         teacherSchedulePanel.updateCourses(myCourses, false);
+        refreshTeacherAnnouncements();
+    }
+
+    private void showCourseAnnouncements(Course course) {
+        String[] cols = { "ID", "Course", "Title", "Created" };
+        DefaultTableModel model = new DefaultTableModel(cols, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        JTable table = new JTable(model);
+        table.setRowHeight(25);
+        table.getTableHeader().setReorderingAllowed(false);
+        addAnnouncementDoubleClickHandler(table);
+        for (Announcement a : db.getCourseAnnouncements(course.getCourseId())) {
+            model.addRow(announcementRow(a));
+        }
+        JButton readButton = new JButton("Read Selected");
+        JPanel content = new JPanel(new BorderLayout());
+        content.add(new JScrollPane(table), BorderLayout.CENTER);
+        content.add(readButton, BorderLayout.SOUTH);
+        JDialog dialog = new JDialog(this, "Announcements - " + course.getCourseName(), true);
+        readButton.addActionListener(e -> readSelectedAnnouncement(table));
+        dialog.setContentPane(content);
+        dialog.setSize(650, 400);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private Course selectedTeacherAnnouncementCourse() {
+        if (teacherAnnouncementCourseCombo == null || currentTeacher == null) return null;
+        int selectedIndex = teacherAnnouncementCourseCombo.getSelectedIndex();
+        if (selectedIndex < 0 || selectedIndex >= currentTeacher.getTeachingCourses().size()) return null;
+        return currentTeacher.getTeachingCourses().get(selectedIndex);
+    }
+
+    private void refreshTeacherAnnouncements() {
+        if (teacherAnnouncementModel == null || currentTeacher == null) return;
+        teacherAnnouncementModel.setRowCount(0);
+        Course selectedCourse = selectedTeacherAnnouncementCourse();
+        if (selectedCourse == null) return;
+        for (Announcement a : db.getCourseAnnouncements(selectedCourse.getCourseId())) {
+            if (!currentTeacher.getUid().equals(a.getProfessorId())) continue;
+            teacherAnnouncementModel.addRow(announcementRow(a));
+        }
+    }
+
+    private Object[] announcementRow(Announcement a) {
+        return new Object[] {
+                a.getId(),
+                a.getCourseName() == null ? "" : a.getCourseName(),
+                a.getTitle(),
+                a.getCreatedAt()
+        };
+    }
+
+    private void publishAnnouncement() {
+        if (currentTeacher == null) return;
+        Course selectedCourse = selectedTeacherAnnouncementCourse();
+        if (selectedCourse == null) {
+            JOptionPane.showMessageDialog(this, "Please select a course before publishing.", "Input Error",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        JTextField titleField = new JTextField();
+        JTextArea contentArea = new JTextArea(8, 30);
+        Object[] form = {
+                "Title:", titleField,
+                "Content:", new JScrollPane(contentArea)
+        };
+        int result = JOptionPane.showConfirmDialog(this, form, "Publish Announcement",
+                JOptionPane.OK_CANCEL_OPTION);
+        if (result != JOptionPane.OK_OPTION) return;
+
+        String title = titleField.getText().trim();
+        String content = contentArea.getText().trim();
+        if (title.isEmpty() || content.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Title and content cannot be empty.", "Input Error",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        boolean created = db.createAnnouncement(new Announcement(title, content, selectedCourse.getCourseId(),
+                currentTeacher.getUid()));
+        if (created) {
+            JOptionPane.showMessageDialog(this, "Announcement published successfully.");
+            refreshTeacherAnnouncements();
+        } else {
+            JOptionPane.showMessageDialog(this, "Announcement publish failed.", "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void readSelectedTeacherAnnouncement() {
+        readSelectedAnnouncement(teacherAnnouncementTable);
+    }
+
+    private void addAnnouncementDoubleClickHandler(JTable table) {
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getButton() != MouseEvent.BUTTON1 || e.getClickCount() != 2) return;
+                int row = table.rowAtPoint(e.getPoint());
+                if (row == -1) return;
+                table.setRowSelectionInterval(row, row);
+                readSelectedAnnouncement(table);
+            }
+        });
+    }
+
+    private void readSelectedAnnouncement(JTable table) {
+        Integer id = selectedAnnouncementId(table);
+        if (id == null) return;
+        Announcement a = db.getAnnouncementById(id);
+        if (a == null) {
+            JOptionPane.showMessageDialog(this, "Announcement not found.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        JTextArea content = new JTextArea(a.getContent(), 12, 40);
+        content.setEditable(false);
+        content.setLineWrap(true);
+        content.setWrapStyleWord(true);
+        String professor = a.getProfessorName() == null ? a.getProfessorId()
+                : a.getProfessorName() + " (" + a.getProfessorId() + ")";
+        Object[] detail = {
+                "Title: " + a.getTitle(),
+                "Course: " + (a.getCourseName() == null ? "" : a.getCourseName()),
+                "Professor: " + professor,
+                "Created: " + a.getCreatedAt(),
+                "Updated: " + a.getUpdatedAt(),
+                new JScrollPane(content)
+        };
+        JOptionPane.showMessageDialog(this, detail, "Announcement Detail", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void editSelectedTeacherAnnouncement() {
+        Integer id = selectedAnnouncementId(teacherAnnouncementTable);
+        if (id == null || currentTeacher == null) return;
+        Announcement a = db.getAnnouncementById(id);
+        if (a == null || !currentTeacher.getUid().equals(a.getProfessorId())) {
+            JOptionPane.showMessageDialog(this, "You can only edit your own announcements.", "Permission Denied",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        JTextField titleField = new JTextField(a.getTitle());
+        JTextArea contentArea = new JTextArea(a.getContent(), 8, 30);
+        Object[] form = {
+                "Title:", titleField,
+                "Content:", new JScrollPane(contentArea)
+        };
+        int result = JOptionPane.showConfirmDialog(this, form, "Edit Announcement",
+                JOptionPane.OK_CANCEL_OPTION);
+        if (result != JOptionPane.OK_OPTION) return;
+
+        String title = titleField.getText().trim();
+        String content = contentArea.getText().trim();
+        if (title.isEmpty() || content.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Title and content cannot be empty.", "Input Error",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        a.setTitle(title);
+        a.setContent(content);
+        boolean updated = db.updateAnnouncement(a);
+        if (updated) {
+            JOptionPane.showMessageDialog(this, "Announcement updated successfully.");
+            refreshTeacherAnnouncements();
+        } else {
+            JOptionPane.showMessageDialog(this, "Update failed.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void deleteSelectedTeacherAnnouncement() {
+        Integer id = selectedAnnouncementId(teacherAnnouncementTable);
+        if (id == null || currentTeacher == null) return;
+        int confirm = JOptionPane.showConfirmDialog(this, "Delete selected announcement?", "Confirm Delete",
+                JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) return;
+
+        boolean deleted = db.deleteAnnouncement(id, currentTeacher.getUid());
+        if (deleted) {
+            JOptionPane.showMessageDialog(this, "Announcement deleted successfully.");
+            refreshTeacherAnnouncements();
+        } else {
+            JOptionPane.showMessageDialog(this, "You can only delete your own announcements.", "Permission Denied",
+                    JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
+    private Integer selectedAnnouncementId(JTable table) {
+        if (table == null || table.getSelectedRow() == -1) {
+            JOptionPane.showMessageDialog(this, "Please select an announcement first.", "Hint",
+                    JOptionPane.WARNING_MESSAGE);
+            return null;
+        }
+        return (Integer) table.getValueAt(table.getSelectedRow(), 0);
     }
 
     private void updateStudentsTable() {
@@ -569,11 +893,11 @@ public class MainGUI extends JFrame {
         if (selectedIndex >= 0 && currentTeacher != null) {
             Course selectedCourse = currentTeacher.getTeachingCourses().get(selectedIndex);
             List<Student> students = selectedCourse.getEnrolledStudents();
-            
+
             for (Student s : students) {
                 Double currentScore = s.getCourseGrades().get(selectedCourse);
-                String scoreDisplay = (currentScore == null) ? "尚未評分" : String.valueOf(currentScore);
-                studentsTableModel.addRow(new Object[]{s.getUid(), s.getName(), scoreDisplay});
+                String scoreDisplay = (currentScore == null) ? "Not Graded" : String.valueOf(currentScore);
+                studentsTableModel.addRow(new Object[] { s.getUid(), s.getName(), scoreDisplay });
             }
         }
     }
@@ -583,50 +907,53 @@ public class MainGUI extends JFrame {
         adminPanel.setLayout(new BorderLayout());
 
         JPanel topPanel = new JPanel(new BorderLayout());
-        lblAdminStatus.setFont(new Font("微軟正黑體", Font.BOLD, 18));
+        lblAdminStatus.setFont(new Font("Segoe UI", Font.BOLD, 18));
         lblAdminStatus.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         topPanel.add(lblAdminStatus, BorderLayout.WEST);
-        
-        JButton btnLogout = new JButton("登出");
+
+        JButton btnLogout = new JButton("Logout");
         btnLogout.addActionListener(e -> {
             cardLayout.show(mainContainer, "LoginCard");
         });
         topPanel.add(btnLogout, BorderLayout.EAST);
         adminPanel.add(topPanel, BorderLayout.NORTH);
-        
+
         // --- 控制台按鈕 ---
         JPanel controlPanel = new JPanel(new GridLayout(4, 1, 20, 20));
         controlPanel.setBorder(BorderFactory.createEmptyBorder(50, 150, 50, 150));
-        JButton btnClosed = new JButton("切換為：系統關閉 (CLOSED)");
-        JButton btnPreEnroll = new JButton("切換為：初選期 (PRE_ENROLL)");
-        JButton btnLottery = new JButton("切換為：抽籤階段 (LOTTERY_RUN)");
-        JButton btnAddDrop = new JButton("切換為：加退選期 (ADD_DROP)");
+        JButton btnClosed = new JButton("Switch to: " + system.getPhaseName(SystemStateManager.SystemPhase.CLOSED));
+        JButton btnPreEnroll = new JButton(
+                "Switch to: " + system.getPhaseName(SystemStateManager.SystemPhase.PRE_ENROLL));
+        JButton btnLottery = new JButton(
+                "Switch to: " + system.getPhaseName(SystemStateManager.SystemPhase.LOTTERY_RUN));
+        JButton btnAddDrop = new JButton("Switch to: " + system.getPhaseName(SystemStateManager.SystemPhase.ADD_DROP));
 
         // 🌟 你的心血：套用最新的 SystemStateManager
         btnClosed.addActionListener(e -> {
             system.setCurrentPhase(SystemStateManager.SystemPhase.CLOSED);
             refreshAdminView();
-            JOptionPane.showMessageDialog(this, "已切換為系統關閉狀態！");
+            JOptionPane.showMessageDialog(this, "Switched to " + system.getPhaseName(SystemStateManager.SystemPhase.CLOSED));
         });
         btnPreEnroll.addActionListener(e -> {
             system.setCurrentPhase(SystemStateManager.SystemPhase.PRE_ENROLL);
             refreshAdminView();
-            JOptionPane.showMessageDialog(this, "已切換為初選期狀態！");
+            JOptionPane.showMessageDialog(this, "Switched to " + system.getPhaseName(SystemStateManager.SystemPhase.PRE_ENROLL));
         });
         btnAddDrop.addActionListener(e -> {
             system.setCurrentPhase(SystemStateManager.SystemPhase.ADD_DROP);
             refreshAdminView();
-            JOptionPane.showMessageDialog(this, "已切換為加退選期狀態！");
+            JOptionPane.showMessageDialog(this, "Switched to " + system.getPhaseName(SystemStateManager.SystemPhase.ADD_DROP));
         });
         btnLottery.addActionListener(e -> {
             system.setCurrentPhase(SystemStateManager.SystemPhase.LOTTERY_RUN);
             refreshAdminView();
-            JOptionPane.showMessageDialog(this, "系統已切換至抽籤階段，即將開始全校抽籤！");
+            JOptionPane.showMessageDialog(this, "System switched to " + system.getPhaseName(SystemStateManager.SystemPhase.LOTTERY_RUN) + ", starting lottery...");
             try {
                 system.runLotterySystem();
-                JOptionPane.showMessageDialog(this, "✅ 全校抽籤分發完成！");
+                JOptionPane.showMessageDialog(this, "Lottery completed!");
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "抽籤過程發生錯誤: " + ex.getMessage(), "錯誤", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Lottery error: " + ex.getMessage(), "Error",
+                        JOptionPane.ERROR_MESSAGE);
             }
         });
 
@@ -637,14 +964,14 @@ public class MainGUI extends JFrame {
 
         // --- 名單查看分頁 ---
         JPanel userListPanel = new JPanel(new BorderLayout());
-        String[] viewOptions = {"學生", "老師"};
+        String[] viewOptions = { "Student", "Professor" };
         JComboBox<String> comboViewRole = new JComboBox<>(viewOptions);
         JPanel topBoxPanel = new JPanel();
-        topBoxPanel.add(new JLabel("請選擇要查看的名單："));
+        topBoxPanel.add(new JLabel("Please select a list to view: "));
         topBoxPanel.add(comboViewRole);
         userListPanel.add(topBoxPanel, BorderLayout.NORTH);
 
-        String[] userCols = {"帳號/編號", "姓名", "密碼"};
+        String[] userCols = { "ID", "Name", "Password" };
         DefaultTableModel userTableModel = new DefaultTableModel(userCols, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -658,23 +985,23 @@ public class MainGUI extends JFrame {
 
         comboViewRole.addActionListener(e -> {
             userTableModel.setRowCount(0);
-            if ("學生".equals(comboViewRole.getSelectedItem())) {
+            if ("Student".equals(comboViewRole.getSelectedItem())) {
                 List<Student> students = db.getAllStudents();
                 for (Student s : students) {
-                    userTableModel.addRow(new Object[]{s.getUid(), s.getName(), s.getPassword()});
+                    userTableModel.addRow(new Object[] { s.getUid(), s.getName(), s.getPassword() });
                 }
             } else {
                 List<Teacher> teachers = db.getAllTeachers();
                 for (Teacher t : teachers) {
-                    userTableModel.addRow(new Object[]{t.getUid(), t.getName(), t.getPassword()});
+                    userTableModel.addRow(new Object[] { t.getUid(), t.getName(), t.getPassword() });
                 }
             }
         });
-        comboViewRole.setSelectedIndex(0); 
+        comboViewRole.setSelectedIndex(0);
 
         // --- 課程查看分頁 ---
         JPanel courseListPanel = new JPanel(new BorderLayout());
-        String[] courseCols = {"課程代碼", "課程名稱", "學分", "人數上限", "授課教師", "星期（節次）", "加簽密碼"};
+        String[] courseCols = { "Course ID", "Course Name", "Credits", "Capacity", "Professor", "Time", "Auth Code" };
         DefaultTableModel courseTableModel = new DefaultTableModel(courseCols, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -684,13 +1011,30 @@ public class MainGUI extends JFrame {
         JTable courseTable = new JTable(courseTableModel);
         courseTable.setRowHeight(25);
         courseTable.getTableHeader().setReorderingAllowed(false);
+
+        courseTable.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                int row = courseTable.rowAtPoint(e.getPoint());
+                int col = courseTable.columnAtPoint(e.getPoint());
+                if (row >= 0 && col == 6) { // 加簽密碼卡欄位
+                    String courseName = (String) courseTableModel.getValueAt(row, 1);
+
+                    // 顯示密碼卡資訊與使用狀況（目前僅為介面）
+                    JOptionPane.showMessageDialog(courseListPanel,
+                            "Auth code details and usage for [" + courseName + "]:\n\n",
+                            "Auth Code Details", JOptionPane.INFORMATION_MESSAGE);
+                }
+            }
+        });
+
         courseListPanel.add(new JScrollPane(courseTable), BorderLayout.CENTER);
 
         JTabbedPane adminTabbedPane = new JTabbedPane();
-        adminTabbedPane.addTab("系統狀態控制台", controlPanel);
-        adminTabbedPane.addTab("註冊新帳號", registerPanel); // 🌟 組員把註冊介面搬來這裡了
-        adminTabbedPane.addTab("查看全校師生名單", userListPanel);
-        adminTabbedPane.addTab("查看全校課程", courseListPanel);
+        adminTabbedPane.addTab("System Control Panel", controlPanel);
+        adminTabbedPane.addTab("Register New Account", registerPanel); // 🌟 組員把註冊介面搬來這裡了
+        adminTabbedPane.addTab("View Users", userListPanel);
+        adminTabbedPane.addTab("View Courses", courseListPanel);
 
         adminTabbedPane.addChangeListener(e -> {
             if (adminTabbedPane.getSelectedComponent() == userListPanel) {
@@ -700,20 +1044,23 @@ public class MainGUI extends JFrame {
                 List<Course> allCourses = db.getAllCourses();
                 for (Course c : allCourses) {
                     String authCode = c.getAuthCode();
-                    if (authCode == null || authCode.trim().isEmpty()) authCode = "無";
-                    courseTableModel.addRow(new Object[]{
-                        c.getCourseId(), c.getCourseName(), c.getCredits(), 
-                        c.getMaxCapacity(), c.getTeacher().getName(), 
-                        c.getTimeSlot().toString(), authCode
+
+                    // 判斷「有或無」密碼卡
+                    String hasAuthCode = (authCode != null && !authCode.trim().isEmpty()) ? "Yes" : "No";
+
+                    courseTableModel.addRow(new Object[] {
+                            c.getCourseId(), c.getCourseName(), c.getCredits(),
+                            c.getMaxCapacity(), c.getTeacher().getName(),
+                            c.getTimeSlot().toString(), hasAuthCode
                     });
                 }
             }
         });
         adminPanel.add(adminTabbedPane, BorderLayout.CENTER);
     }
-    
+
     private void refreshAdminView() {
-        lblAdminStatus.setText("系統管理員控制台 | 目前狀態: " + system.getCurrentPhase());
+        lblAdminStatus.setText("Admin Control Panel | Phase: " + system.getPhaseName(system.getCurrentPhase()));
     }
 
     // ==================== 程式執行起點 ====================
@@ -726,10 +1073,10 @@ public class MainGUI extends JFrame {
                 }
             }
         } catch (Exception e) {
-            System.out.println("無法載入 Nimbus 主題，將使用系統預設外觀。");
+            System.out.println("Cannot load Nimbus look and feel, using system default.");
         }
 
-        Font uiFont = new Font("微軟正黑體", Font.PLAIN, 20);
+        Font uiFont = new Font("Segoe UI", Font.PLAIN, 20);
         javax.swing.UIDefaults defaults = UIManager.getLookAndFeelDefaults();
         for (Object key : defaults.keySet()) {
             if (key.toString().endsWith(".font")) {
