@@ -28,4 +28,23 @@ public class Student extends User {
 
     public List<Course> getMyCourses() { return myCourses; }
     public Map<Course, Double> getCourseGrades() { return courseGrades; }
+
+
+    @Override
+    public boolean equals(Object obj) {
+        // 如果是同一個記憶體位址，當然是同一個人  
+        if (this == obj) return true;
+        // 如果對方是 null 或根本不是 Student 類別，直接說不認識
+        if (obj == null || getClass() != obj.getClass()) return false;
+        
+        // 把對方當作 Student 來看，並比對「學號」
+        Student otherStudent = (Student) obj;
+        return this.getUid().equals(otherStudent.getUid()); 
+    }
+
+    @Override
+    public int hashCode() {
+        // 確保學號一樣的人，會被分發到同一個 Hash 抽屜裡
+        return this.getUid().hashCode();
+    }
 }

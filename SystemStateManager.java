@@ -10,7 +10,7 @@ public class SystemStateManager {
 
     public void setCurrentPhase(SystemPhase phase) {
         this.currentPhase = phase;
-        System.out.println("📢 系統廣播：目前選課階段已切換為 [" + phase + "]");
+        System.out.println("System broadcast: The course selection phase has now switched to [" + phase + "]");
     }
 
     public SystemPhase getCurrentPhase() {
@@ -19,23 +19,23 @@ public class SystemStateManager {
 
     public void requirePhase(SystemPhase expectedPhase, String actionName) throws Exception {
         if (this.currentPhase != expectedPhase) {
-            throw new Exception("⛔ 目前不是「" + getPhaseName(expectedPhase) + "」時段，無法執行 " + actionName + "！");
+            throw new Exception("It is not currently within the time frame of「" + getPhaseName(expectedPhase) + "」therefore " + actionName + " cannot be executed");
         }
     }
 
     public void requireNotPhase(SystemPhase forbiddenPhase1, SystemPhase forbiddenPhase2, String actionName) throws Exception {
         if (this.currentPhase == forbiddenPhase1 || this.currentPhase == forbiddenPhase2) {
-            throw new Exception("⛔ 抱歉，目前系統狀態禁止執行 " + actionName + "！");
+            throw new Exception("Sorry, execution is currently disabled by the system! " + actionName + "！");
         }
     }
 
     private String getPhaseName(SystemPhase phase) {
         switch (phase) {
-            case CLOSED: return "系統關閉";
-            case PRE_ENROLL: return "初選登記";
-            case LOTTERY_RUN: return "抽籤分發";
-            case ADD_DROP: return "加退選";
-            default: return "未知";
+            case CLOSED: return "System shutdown";
+            case PRE_ENROLL: return "Preliminary registration";
+            case LOTTERY_RUN: return "Distribution by lottery";
+            case ADD_DROP: return "Add/Withdraw";
+            default: return "unknown";
         }
     }
 }

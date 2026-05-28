@@ -13,12 +13,30 @@ public class LotteryManager {
     // ==========================================
     public void registerIntent(Student student, Course course) throws Exception {
         if (student.getMyCourses().contains(course)) {
-            throw new Exception("選課失敗：您已經正式選修此課程！");
+            throw new Exception("Course selection failed: You have already officially enrolled in this course！");
         }
         if (student.hasTimeConflict(course)) {
-            throw new TimeConflictException("登記失敗：與您目前的課表衝堂！");
+            throw new TimeConflictException("Registration failed: This is due to a conflict with your current class schedule!");
         }
+        //登記衝堂檢查
+        for (Course pendingCourse : database.getAllCourses()) {
+            
+            // 1. 手動去翻這門課的排隊名單，看有沒有一樣的「學號」
+            boolean isAlreadyPending = false;
+            for (Student s : pendingCourse.getPendingStudents()) {
+                if (s.getUid().equals(student.getUid())) {
+                    isAlreadyPending = true;
+                    break;
+                }
+            }
 
+            // 2. 如果學號有在排隊名單裡，再去比對時間！
+            if (isAlreadyPending) {
+                if (pendingCourse.getTimeSlot().isConflictWith(course.getTimeSlot())) {
+                    throw new Exception("Registration failed: This course is not compatible with your class [" + pendingCourse.getCourseName() + "] ！");
+                }
+            }
+        }
         database.savePendingEnrollment(student, course);
         course.addPendingStudent(student);
     }
@@ -35,7 +53,7 @@ public class LotteryManager {
                 student.getCourseGrades().remove(course);
                 course.removeStudent(student);
             } else {
-                throw new Exception("系統異常，退選失敗。");
+                throw new Exception("System error, withdrawal failed.");
             }
         } 
         // 情況 B：如果還在排隊抽籤 -> 取消登記
@@ -43,7 +61,7 @@ public class LotteryManager {
             database.deletePendingEnrollment(student, course);
             course.removePendingStudent(student);
         } else {
-            throw new Exception("您並未選修或登記此課程！");
+            throw new Exception("You have not selected or registered for this course!");
         }
     }
 
