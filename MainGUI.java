@@ -42,6 +42,12 @@ public class MainGUI extends JFrame {
     private SchedulePanel teacherSchedulePanel = new SchedulePanel();
     private JLabel lblTeacherWelcome = new JLabel();
     private JLabel lblAdminStatus = new JLabel();
+    private JTabbedPane adminTabbedPane;
+    private JPanel userListPanel;
+    private JPanel courseListPanel;
+    private JComboBox<String> comboViewRole;
+    private DefaultTableModel userTableModel;
+    private DefaultTableModel courseTableModel;
 
 
     public MainGUI() {
@@ -588,6 +594,49 @@ public class MainGUI extends JFrame {
         selectCoursePanel.add(courseComboBox);
         gradePanel.add(selectCoursePanel, BorderLayout.NORTH);
 
+        JButton btnViewAuthCodes = new JButton("Auth Codes");
+        selectCoursePanel.add(btnViewAuthCodes);
+
+        btnViewAuthCodes.addActionListener(e -> {
+            int selectedCourseIndex = courseComboBox.getSelectedIndex();
+            if (selectedCourseIndex == -1 || currentTeacher == null) {
+                JOptionPane.showMessageDialog(teacherPanel, "Please select a course first!");
+                return;
+            }
+            Course selectedCourse = currentTeacher.getTeachingCourses().get(selectedCourseIndex);
+            
+            List<AuthCode> authCodesList = db.getCourseAuthCodes(selectedCourse.getCourseId());
+            if (authCodesList.isEmpty()) {
+                JOptionPane.showMessageDialog(teacherPanel,
+                        "No Auth Codes generated for [" + selectedCourse.getCourseName() + "].",
+                        "Auth Code Details", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+
+            String[] acCols = { "Auth Code", "Status", "Used By" };
+            DefaultTableModel acModel = new DefaultTableModel(acCols, 0) {
+                @Override
+                public boolean isCellEditable(int r, int c) {
+                    return false;
+                }
+            };
+            for (AuthCode ac : authCodesList) {
+                acModel.addRow(new Object[] {
+                    ac.getCode(),
+                    ac.isUsed() ? "Used" : "Unused",
+                    ac.getUsedBy() == null ? "-" : ac.getUsedBy()
+                });
+            }
+            JTable acTable = new JTable(acModel);
+            acTable.setRowHeight(25);
+            acTable.getTableHeader().setReorderingAllowed(false);
+            JScrollPane scrollPane = new JScrollPane(acTable);
+            scrollPane.setPreferredSize(new Dimension(400, 300));
+
+            JOptionPane.showMessageDialog(teacherPanel, scrollPane,
+                    "Auth Code Details - " + selectedCourse.getCourseName(), JOptionPane.PLAIN_MESSAGE);
+        });
+
         String[] cols = { "Student ID", "Student Name", "Current Grade" };
         studentsTableModel = new DefaultTableModel(cols, 0) {
             @Override
@@ -996,16 +1045,16 @@ public class MainGUI extends JFrame {
         controlPanel.add(btnAddDrop);
 
         // --- 名單查看分頁 ---
-        JPanel userListPanel = new JPanel(new BorderLayout());
+        userListPanel = new JPanel(new BorderLayout());
         String[] viewOptions = { "Student", "Professor" };
-        JComboBox<String> comboViewRole = new JComboBox<>(viewOptions);
+        comboViewRole = new JComboBox<>(viewOptions);
         JPanel topBoxPanel = new JPanel();
         topBoxPanel.add(new JLabel("Please select a list to view: "));
         topBoxPanel.add(comboViewRole);
         userListPanel.add(topBoxPanel, BorderLayout.NORTH);
 
         String[] userCols = { "ID", "Name", "Password" };
-        DefaultTableModel userTableModel = new DefaultTableModel(userCols, 0) {
+        userTableModel = new DefaultTableModel(userCols, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
@@ -1033,9 +1082,9 @@ public class MainGUI extends JFrame {
         comboViewRole.setSelectedIndex(0);
 
         // --- 課程查看分頁 ---
-        JPanel courseListPanel = new JPanel(new BorderLayout());
+        courseListPanel = new JPanel(new BorderLayout());
         String[] courseCols = { "Course ID", "Course Name", "Credits", "Capacity", "Professor", "Time", "Auth Code" };
-        DefaultTableModel courseTableModel = new DefaultTableModel(courseCols, 0) {
+        courseTableModel = new DefaultTableModel(courseCols, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
@@ -1051,49 +1100,81 @@ public class MainGUI extends JFrame {
                 int row = courseTable.rowAtPoint(e.getPoint());
                 int col = courseTable.columnAtPoint(e.getPoint());
                 if (row >= 0 && col == 6) { // 加簽密碼卡欄位
+                    String courseId = (String) courseTableModel.getValueAt(row, 0);
                     String courseName = (String) courseTableModel.getValueAt(row, 1);
 
-                    // 顯示密碼卡資訊與使用狀況（目前僅為介面）
-                    JOptionPane.showMessageDialog(courseListPanel,
-                            "Auth code details and usage for [" + courseName + "]:\n\n",
-                            "Auth Code Details", JOptionPane.INFORMATION_MESSAGE);
+                    List<AuthCode> authCodesList = db.getCourseAuthCodes(courseId);
+                    if (authCodesList.isEmpty()) {
+                        JOptionPane.showMessageDialog(courseListPanel,
+                                "No Auth Codes generated for [" + courseName + "].",
+                                "Auth Code Details", JOptionPane.INFORMATION_MESSAGE);
+                        return;
+                    }
+
+                    String[] acCols = { "Auth Code", "Status", "Used By" };
+                    DefaultTableModel acModel = new DefaultTableModel(acCols, 0) {
+                        @Override
+                        public boolean isCellEditable(int r, int c) {
+                            return false;
+                        }
+                    };
+                    for (AuthCode ac : authCodesList) {
+                        acModel.addRow(new Object[] {
+                            ac.getCode(),
+                            ac.isUsed() ? "Used" : "Unused",
+                            ac.getUsedBy() == null ? "-" : ac.getUsedBy()
+                        });
+                    }
+                    JTable acTable = new JTable(acModel);
+                    acTable.setRowHeight(25);
+                    acTable.getTableHeader().setReorderingAllowed(false);
+                    JScrollPane scrollPane = new JScrollPane(acTable);
+                    scrollPane.setPreferredSize(new Dimension(400, 300));
+
+                    JOptionPane.showMessageDialog(courseListPanel, scrollPane,
+                            "Auth Code Details - " + courseName, JOptionPane.PLAIN_MESSAGE);
                 }
             }
         });
 
         courseListPanel.add(new JScrollPane(courseTable), BorderLayout.CENTER);
 
-        JTabbedPane adminTabbedPane = new JTabbedPane();
+        adminTabbedPane = new JTabbedPane();
         adminTabbedPane.addTab("System Control Panel", controlPanel);
         adminTabbedPane.addTab("Register New Account", registerPanel); // 🌟 組員把註冊介面搬來這裡了
         adminTabbedPane.addTab("View Users", userListPanel);
         adminTabbedPane.addTab("View Courses", courseListPanel);
 
         adminTabbedPane.addChangeListener(e -> {
-            if (adminTabbedPane.getSelectedComponent() == userListPanel) {
-                comboViewRole.setSelectedIndex(comboViewRole.getSelectedIndex());
-            } else if (adminTabbedPane.getSelectedComponent() == courseListPanel) {
-                courseTableModel.setRowCount(0);
-                List<Course> allCourses = db.getAllCourses();
-                for (Course c : allCourses) {
-                    String authCode = c.getAuthCode();
-
-                    // 判斷「有或無」密碼卡
-                    String hasAuthCode = (authCode != null && !authCode.trim().isEmpty()) ? "Yes" : "No";
-
-                    courseTableModel.addRow(new Object[] {
-                            c.getCourseId(), c.getCourseName(), c.getCredits(),
-                            c.getMaxCapacity(), c.getTeacher().getName(),
-                            c.getTimeSlot().toString(), hasAuthCode
-                    });
-                }
-            }
+            refreshAdminTabbedPane();
         });
         adminPanel.add(adminTabbedPane, BorderLayout.CENTER);
     }
 
+    private void refreshAdminTabbedPane() {
+        if (adminTabbedPane.getSelectedComponent() == userListPanel) {
+            comboViewRole.setSelectedIndex(comboViewRole.getSelectedIndex());
+        } else if (adminTabbedPane.getSelectedComponent() == courseListPanel) {
+            courseTableModel.setRowCount(0);
+            List<Course> allCourses = db.getAllCourses();
+            for (Course c : allCourses) {
+                List<AuthCode> authCodesList = db.getCourseAuthCodes(c.getCourseId());
+                String hasAuthCode = !authCodesList.isEmpty() ? "Yes" : "No";
+
+                courseTableModel.addRow(new Object[] {
+                        c.getCourseId(), c.getCourseName(), c.getCredits(),
+                        c.getMaxCapacity(), c.getTeacher().getName(),
+                        c.getTimeSlot().toString(), hasAuthCode
+                });
+            }
+        }
+    }
+
     private void refreshAdminView() {
         lblAdminStatus.setText("Admin Control Panel | Phase: " + system.getPhaseName(system.getCurrentPhase()));
+        if (adminTabbedPane != null) {
+            refreshAdminTabbedPane();
+        }
     }
 
     // ==================== 程式執行起點 ====================
