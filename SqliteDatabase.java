@@ -50,7 +50,6 @@ public class SqliteDatabase {
             stmt.execute(SqlQueries.CREATE_COURSES);
             stmt.execute(SqlQueries.CREATE_AUTH_CODES);
             stmt.execute(SqlQueries.CREATE_ANNOUNCEMENTS);
-            ensureAnnouncementSchema(stmt);
             stmt.execute(SqlQueries.CREATE_ENROLLMENTS);
             stmt.execute(SqlQueries.CREATE_PENDING);
 
@@ -61,49 +60,6 @@ public class SqliteDatabase {
         }
     }
 
-    private void ensureAnnouncementSchema(Statement stmt) throws SQLException {
-        boolean hasProfessorId = false;
-        boolean hasCourseId = false;
-        boolean hasCreatedAt = false;
-        boolean hasUpdatedAt = false;
-        boolean hasPostTime = false;
-        try (ResultSet rs = stmt.executeQuery("PRAGMA table_info(announcements)")) {
-            while (rs.next()) {
-                if ("professor_id".equals(rs.getString("name"))) {
-                    hasProfessorId = true;
-                }
-                if ("course_id".equals(rs.getString("name"))) {
-                    hasCourseId = true;
-                }
-                if ("created_at".equals(rs.getString("name"))) {
-                    hasCreatedAt = true;
-                }
-                if ("updated_at".equals(rs.getString("name"))) {
-                    hasUpdatedAt = true;
-                }
-                if ("post_time".equals(rs.getString("name"))) {
-                    hasPostTime = true;
-                }
-            }
-        }
-
-        if (!hasProfessorId) {
-            stmt.execute("ALTER TABLE announcements ADD COLUMN professor_id TEXT");
-        }
-        if (!hasCourseId) {
-            stmt.execute("ALTER TABLE announcements ADD COLUMN course_id TEXT");
-        }
-        if (!hasCreatedAt) {
-            stmt.execute("ALTER TABLE announcements ADD COLUMN created_at DATETIME");
-            if (hasPostTime) {
-                stmt.execute("UPDATE announcements SET created_at = post_time WHERE created_at IS NULL");
-            }
-        }
-        if (!hasUpdatedAt) {
-            stmt.execute("ALTER TABLE announcements ADD COLUMN updated_at DATETIME");
-            stmt.execute("UPDATE announcements SET updated_at = COALESCE(created_at, CURRENT_TIMESTAMP) WHERE updated_at IS NULL");
-        }
-    }
 
     // 2. 寫入資料 (INSERT)
     public void registerStudent(Student s) {
@@ -164,10 +120,10 @@ public class SqliteDatabase {
         }
     }
 
-    public void addAnnouncement(String courseId, String title, String content) {
+    public void addAnnouncement(String courseId, String professorId, String title, String content) {
         try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.INSERT_ANNOUNCEMENT)) {
             pstmt.setString(1, courseId);
-            pstmt.setString(2, courseId);
+            pstmt.setString(2, professorId);
             pstmt.setString(3, title);
             pstmt.setString(4, content);
             pstmt.executeUpdate();

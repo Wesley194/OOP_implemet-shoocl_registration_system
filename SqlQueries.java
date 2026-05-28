@@ -25,9 +25,13 @@ public class SqlQueries {
             "FOREIGN KEY (used_by) REFERENCES students(uid) ON DELETE SET NULL);";
 
     public static final String CREATE_ANNOUNCEMENTS = "CREATE TABLE IF NOT EXISTS announcements (" +
-            "id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, content TEXT NOT NULL, " +
-            "course_id TEXT, professor_id TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, " +
-            "updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, " +
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+            "course_id TEXT NOT NULL, " +
+            "professor_id TEXT NOT NULL, " +
+            "title TEXT NOT NULL, " +
+            "content TEXT NOT NULL, " +
+            "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, " +
+            "updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, " + 
             "FOREIGN KEY (course_id) REFERENCES courses(course_id) ON DELETE CASCADE, " +
             "FOREIGN KEY (professor_id) REFERENCES teachers(uid) ON DELETE CASCADE);";
 
@@ -54,7 +58,7 @@ public class SqlQueries {
     public static final String INSERT_AUTH_CODE = "INSERT INTO auth_codes (code, course_id, is_used) VALUES (?, ?, 0)";
     
     public static final String INSERT_ANNOUNCEMENT = "INSERT INTO announcements (course_id, professor_id, title, content) " +
-            "VALUES (?, (SELECT teacher_id FROM courses WHERE course_id = ?), ?, ?)";
+            "VALUES (?, ?, ?, ?)";
 
     public static final String INSERT_ENROLLMENT = "INSERT INTO enrollments (student_id, course_id) VALUES (?, ?)";
     

@@ -58,7 +58,7 @@ public class DatabaseTester {
             }
             System.out.println();
             
-            db.addAnnouncement(c.getCourseId(), "Welcome", "Please buy the textbook");
+            db.addAnnouncement(c.getCourseId(), c.getTeacher().getUid(), "Welcome", "Please buy the textbook");
         }
 
         for (Student s : students) {
