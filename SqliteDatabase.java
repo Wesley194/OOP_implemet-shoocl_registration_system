@@ -283,6 +283,25 @@ public class SqliteDatabase {
         return list;
     }
 
+    public List<AuthCode> getCourseAuthCodes(String courseId) {
+        List<AuthCode> authCodes = new ArrayList<>();
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.GET_COURSE_AUTH_CODES)) {
+            pstmt.setString(1, courseId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    AuthCode ac = new AuthCode(
+                        rs.getString("code"),
+                        rs.getInt("is_used") == 1, // 將 SQLite 的 1/0 轉換為 boolean
+                        rs.getString("used_by")
+                    );
+                    authCodes.add(ac);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Failed to query auth codes: " + e.getMessage());
+        }
+        return authCodes;
+    }
 
     // 查詢特定學生的所有選課 (SELECT + INNER JOIN)
     public List<Course> getStudentCourses(String studentUid) {
