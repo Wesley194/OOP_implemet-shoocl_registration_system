@@ -25,10 +25,11 @@ public class SqlQueries {
             "FOREIGN KEY (used_by) REFERENCES students(uid) ON DELETE SET NULL);";
 
     public static final String CREATE_ANNOUNCEMENTS = "CREATE TABLE IF NOT EXISTS announcements (" +
-            "id INTEGER PRIMARY KEY AUTOINCREMENT, course_id TEXT NOT NULL, " +
-            "title TEXT NOT NULL, content TEXT NOT NULL, " +
-            "post_time DATETIME DEFAULT CURRENT_TIMESTAMP, " +
-            "FOREIGN KEY (course_id) REFERENCES courses(course_id) ON DELETE CASCADE);";
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, content TEXT NOT NULL, " +
+            "course_id TEXT, professor_id TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, " +
+            "updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, " +
+            "FOREIGN KEY (course_id) REFERENCES courses(course_id) ON DELETE CASCADE, " +
+            "FOREIGN KEY (professor_id) REFERENCES teachers(uid) ON DELETE CASCADE);";
 
     public static final String CREATE_ENROLLMENTS = "CREATE TABLE IF NOT EXISTS enrollments (" +
             "student_id TEXT, course_id TEXT, score REAL, " +
@@ -52,7 +53,8 @@ public class SqlQueries {
     
     public static final String INSERT_AUTH_CODE = "INSERT INTO auth_codes (code, course_id, is_used) VALUES (?, ?, 0)";
     
-    public static final String INSERT_ANNOUNCEMENT = "INSERT INTO announcements (course_id, title, content) VALUES (?, ?, ?)";
+    public static final String INSERT_ANNOUNCEMENT = "INSERT INTO announcements (course_id, professor_id, title, content) " +
+            "VALUES (?, (SELECT teacher_id FROM courses WHERE course_id = ?), ?, ?)";
 
     public static final String INSERT_ENROLLMENT = "INSERT INTO enrollments (student_id, course_id) VALUES (?, ?)";
     
@@ -83,7 +85,18 @@ public class SqlQueries {
     
     public static final String GET_COURSE_STUDENTS_WITH_GRADES = "SELECT s.uid, s.name, s.password, e.score FROM students s JOIN enrollments e ON s.uid = e.student_id WHERE e.course_id = ?";
     
-    public static final String GET_COURSE_ANNOUNCEMENTS = "SELECT * FROM announcements WHERE course_id = ? ORDER BY post_time DESC";
+    public static final String GET_COURSE_ANNOUNCEMENTS = "SELECT a.*, c.course_name, t.name AS professor_name FROM announcements a " +
+            "JOIN courses c ON a.course_id = c.course_id " +
+            "LEFT JOIN teachers t ON a.professor_id = t.uid WHERE a.course_id = ? ORDER BY a.created_at DESC";
+    
+    public static final String INSERT_GENERAL_ANNOUNCEMENT = "INSERT INTO announcements (title, content, course_id, professor_id) " +
+            "SELECT ?, ?, course_id, teacher_id FROM courses WHERE course_id = ? AND teacher_id = ?";
+    
+    public static final String GET_ALL_ANNOUNCEMENTS = "SELECT a.*, c.course_name, t.name AS professor_name FROM announcements a LEFT JOIN courses c ON a.course_id = c.course_id LEFT JOIN teachers t ON a.professor_id = t.uid ORDER BY a.created_at DESC";
+    
+    public static final String GET_ANNOUNCEMENTS_BY_PROFESSOR = "SELECT a.*, c.course_name, t.name AS professor_name FROM announcements a LEFT JOIN courses c ON a.course_id = c.course_id LEFT JOIN teachers t ON a.professor_id = t.uid WHERE a.professor_id = ? ORDER BY a.created_at DESC";
+    
+    public static final String GET_ANNOUNCEMENT_BY_ID = "SELECT a.*, c.course_name, t.name AS professor_name FROM announcements a LEFT JOIN courses c ON a.course_id = c.course_id LEFT JOIN teachers t ON a.professor_id = t.uid WHERE a.id = ?";
     
     public static final String GET_PENDING_STUDENTS = "SELECT student_id FROM pending_enrollments WHERE course_id = ?";
     
@@ -95,9 +108,13 @@ public class SqlQueries {
     public static final String UPDATE_GRADE = "UPDATE enrollments SET score = ? WHERE student_id = ? AND course_id = ?";
     
     public static final String UPDATE_AUTH_CODE_USED = "UPDATE auth_codes SET is_used = 1, used_by = ? WHERE code = ?";
+    
+    public static final String UPDATE_ANNOUNCEMENT = "UPDATE announcements SET title = ?, content = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND professor_id = ?";
 
     // 刪除資料 DELETE
     public static final String DELETE_PENDING_ENROLLMENT = "DELETE FROM pending_enrollments WHERE student_id = ? AND course_id = ?";
     
     public static final String DELETE_ENROLLMENT = "DELETE FROM enrollments WHERE student_id = ? AND course_id = ?";
+    
+    public static final String DELETE_ANNOUNCEMENT = "DELETE FROM announcements WHERE id = ? AND professor_id = ?";
 }

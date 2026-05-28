@@ -3,10 +3,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+// 記錄學生的課表與成績。
 public class Student extends User {
     private List<Course> myCourses;
     private Map<Course, Double> courseGrades;
 
+    // 建立學生帳號。
     public Student(String uid, String name, String password) {
         super(uid, name, password);
         this.myCourses = new ArrayList<>();
@@ -14,18 +16,53 @@ public class Student extends User {
     }
 
     @Override
-    public String getRole() { return "Student"; }
+    public String getRole() {
+        return "Student";
+    }
 
+    // 檢查新課程是否和目前課表衝堂。
     public boolean hasTimeConflict(Course newCourse) {
         for (Course c : myCourses) {
-            if (c.getTimeSlot().isConflictWith(newCourse.getTimeSlot())) return true;
+            if (c.getTimeSlot().isConflictWith(newCourse.getTimeSlot())) {
+                return true;
+            }
         }
         return false;
     }
 
-    public void enrollInCourse(Course course) { myCourses.add(course); }
-    public void setGrade(Course course, double grade) { courseGrades.put(course, grade); }
+    // 管理學生已選上的課程。
+    public void enrollInCourse(Course course) {
+        myCourses.add(course);
+    }
 
-    public List<Course> getMyCourses() { return myCourses; }
-    public Map<Course, Double> getCourseGrades() { return courseGrades; }
+    public List<Course> getMyCourses() {
+        return myCourses;
+    }
+
+    // 管理學生各課程成績。
+    public void setGrade(Course course, double grade) {
+        courseGrades.put(course, grade);
+    }
+
+    public Map<Course, Double> getCourseGrades() {
+        return courseGrades;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        // 如果是同一個記憶體位址，當然是同一個人  
+        if (this == obj) return true;
+        // 如果對方是 null 或根本不是 Student 類別，直接說不認識
+        if (obj == null || getClass() != obj.getClass()) return false;
+        
+        // 把對方當作 Student 來看，並比對「學號」
+        Student otherStudent = (Student) obj;
+        return this.getUid().equals(otherStudent.getUid()); 
+    }
+
+    @Override
+    public int hashCode() {
+        // 確保學號一樣的人，會被分發到同一個 Hash 抽屜裡
+        return this.getUid().hashCode();
+    }
 }

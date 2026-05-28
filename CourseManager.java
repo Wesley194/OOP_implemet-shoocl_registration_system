@@ -1,49 +1,53 @@
+// 負責教師開課與開課相關檢查。
 public class CourseManager {
     private SqliteDatabase database;
 
+    // 建立課程管理器。
     public CourseManager(SqliteDatabase database) {
         this.database = database;
     }
 
-    // 加上 throws Exception 讓錯誤訊息可以傳給前端
-    public void createCourse(Teacher teacher, String courseId, String courseName, int credits, int maxCapacity, TimeSlot time,String authCode) throws Exception {
-        
-        // 防呆 1: 檢查課號是否重複
+    // 檢查資料後建立新課程。
+    public void createCourse(
+            Teacher teacher,
+            String courseId,
+            String courseName,
+            int credits,
+            int maxCapacity,
+            TimeSlot time,
+            String authCode) throws Exception {
+
+        // 檢查課號是否重複。
         for (Course c : database.getAllCourses()) {
             if (c.getCourseId().equals(courseId)) {
-                throw new Exception("開課失敗：課號 [" + courseId + "] 已存在於系統中！");
+                throw new Exception("Course creation failed: course ID [" + courseId + "] already exists.");
             }
         }
 
-        // 防呆 2: 學分數限制 (1~3學分)
+        // 檢查學分、星期與節次是否合理。
         if (credits < 1 || credits > 3) {
-            throw new Exception("開課失敗：學分數必須介於 1 到 3 之間！");
+            throw new Exception("Course creation failed: credits must be between 1 and 3.");
         }
-
-        // 防呆 3: 星期與節次合理性檢查
         if (time.getDayOfWeek() < 1 || time.getDayOfWeek() > 5) {
-            throw new Exception("開課失敗：上課星期必須為 1 到 5 (週一至週五)！");
+            throw new Exception("Course creation failed: day of week must be between 1 and 5.");
         }
         if (time.getStartPeriod() < 1 || time.getEndPeriod() > 14) {
-            throw new Exception("開課失敗：節次必須介於 1 到 14 節之間！");
+            throw new Exception("Course creation failed: class periods must be between 1 and 14.");
         }
         if (time.getEndPeriod() < time.getStartPeriod()) {
-            throw new Exception("開課失敗：結束節次不能在開始節次之前！");
+            throw new Exception("Course creation failed: end period cannot be earlier than start period.");
         }
 
-        // 防呆 4: 檢查老師自己是否衝堂
+        // 檢查教師自己的授課時間是否衝堂。
         for (Course c : teacher.getTeachingCourses()) {
             if (c.getTimeSlot().isConflictWith(time)) {
-                throw new Exception("開課失敗：您在此時段已開設 [" + c.getCourseName() + "]，請選擇其他時間！");
+                throw new Exception("Course creation failed: this time conflicts with [" + c.getCourseName() + "].");
             }
         }
 
-        // 所有檢查皆通過，正式建立並指派課程
         Course newCourse = new Course(courseId, courseName, credits, maxCapacity, time, teacher);
         newCourse.setAuthCode(authCode);
         teacher.assignCourse(newCourse);
         database.addCourseToSystem(newCourse);
-
     }
 }
-
