@@ -34,6 +34,24 @@ public class TimeSlot {
 
     @Override
     public String toString() {
-        return "星期" + dayOfWeek + " (" + startPeriod + "~" + endPeriod + "節)";
+        return getDayName() + " (Periods " + startPeriod + "-" + endPeriod + ")";
+    }
+
+    // 把星期數字轉成英文顯示名稱。
+    private String getDayName() {
+        switch (dayOfWeek) {
+            case 1:
+                return "Monday";
+            case 2:
+                return "Tuesday";
+            case 3:
+                return "Wednesday";
+            case 4:
+                return "Thursday";
+            case 5:
+                return "Friday";
+            default:
+                return "Day " + dayOfWeek;
+        }
     }
 }
