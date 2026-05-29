@@ -21,9 +21,28 @@ public class AdminPanel extends JPanel {
     private void buildPanel() {
         this.setLayout(new BorderLayout());
         JPanel topPanel = new JPanel(new BorderLayout());
+        
+        JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        JButton btnInfo = new JButton("ⓘ");
+        btnInfo.setFont(new Font("Segoe UI", Font.PLAIN, 20));
+        btnInfo.setMargin(new Insets(0, 0, 0, 0));
+        btnInfo.setContentAreaFilled(false);
+        btnInfo.setBorderPainted(false);
+        btnInfo.setFocusPainted(false);
+        btnInfo.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnInfo.addActionListener(e -> {
+            if (controller.getCurrentAdmin() != null) {
+                UserProfileDialog.showDialog(controller.getFrame(), controller.getCurrentAdmin(), controller.getDatabase());
+                refreshAdminView();
+            }
+        });
+        leftPanel.add(btnInfo);
+
         lblAdminStatus.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblAdminStatus.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        topPanel.add(lblAdminStatus, BorderLayout.WEST);
+        lblAdminStatus.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 10));
+        leftPanel.add(lblAdminStatus);
+        topPanel.add(leftPanel, BorderLayout.WEST);
+        
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton btnRefresh = new JButton("Refresh");
         btnRefresh.addActionListener(e -> refreshAdminView());

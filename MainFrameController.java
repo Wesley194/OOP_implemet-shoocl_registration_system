@@ -7,6 +7,8 @@ public interface MainFrameController {
     void setCurrentStudent(Student student);
     Teacher getCurrentTeacher();
     void setCurrentTeacher(Teacher teacher);
+    Admin getCurrentAdmin();
+    void setCurrentAdmin(Admin admin);
     void logout();
     JFrame getFrame();
 }

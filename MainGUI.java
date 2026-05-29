@@ -10,6 +10,7 @@ public class MainGUI extends JFrame implements MainFrameController {
 
     private Student currentStudent;
     private Teacher currentTeacher;
+    private Admin currentAdmin;
 
     private StudentPanel studentPanel;
     private TeacherPanel teacherPanel;
@@ -57,6 +58,7 @@ public class MainGUI extends JFrame implements MainFrameController {
     public void logout() {
         this.currentStudent = null;
         this.currentTeacher = null;
+        this.currentAdmin = null;
         switchToPanel("LoginCard");
     }
 
@@ -88,6 +90,16 @@ public class MainGUI extends JFrame implements MainFrameController {
     @Override
     public void setCurrentTeacher(Teacher teacher) {
         this.currentTeacher = teacher;
+    }
+
+    @Override
+    public Admin getCurrentAdmin() {
+        return currentAdmin;
+    }
+
+    @Override
+    public void setCurrentAdmin(Admin admin) {
+        this.currentAdmin = admin;
     }
 
     @Override

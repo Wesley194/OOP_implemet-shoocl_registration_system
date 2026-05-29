@@ -70,6 +70,7 @@ public class LoginPanel extends JPanel {
                 txtId.setText("");
                 txtPwd.setText("");
             } else if (a != null && a.verifyPassword(pwd)) {
+                controller.setCurrentAdmin(a);
                 JOptionPane.showMessageDialog(this, "Admin login successful!");
                 txtId.setText("");
                 txtPwd.setText("");
