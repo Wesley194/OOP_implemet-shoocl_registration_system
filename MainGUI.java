@@ -244,12 +244,17 @@ public class MainGUI extends JFrame {
         lblStudentWelcome.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         topPanel.add(lblStudentWelcome, BorderLayout.WEST);
 
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton btnRefresh = new JButton("Refresh");
+        btnRefresh.addActionListener(e -> refreshStudentView());
         JButton btnLogout = new JButton("Logout");
         btnLogout.addActionListener(e -> {
             currentStudent = null;
             cardLayout.show(mainContainer, "LoginCard");
         });
-        topPanel.add(btnLogout, BorderLayout.EAST);
+        rightPanel.add(btnRefresh);
+        rightPanel.add(btnLogout);
+        topPanel.add(rightPanel, BorderLayout.EAST);
         studentPanel.add(topPanel, BorderLayout.NORTH);
 
         JTabbedPane tabbedPane = new JTabbedPane();
@@ -485,12 +490,17 @@ public class MainGUI extends JFrame {
         lblTeacherWelcome.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         topPanel.add(lblTeacherWelcome, BorderLayout.WEST);
 
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton btnRefresh = new JButton("Refresh");
+        btnRefresh.addActionListener(e -> refreshTeacherView());
         JButton btnLogout = new JButton("Logout");
         btnLogout.addActionListener(e -> {
             currentTeacher = null;
             cardLayout.show(mainContainer, "LoginCard");
         });
-        topPanel.add(btnLogout, BorderLayout.EAST);
+        rightPanel.add(btnRefresh);
+        rightPanel.add(btnLogout);
+        topPanel.add(rightPanel, BorderLayout.EAST);
         teacherPanel.add(topPanel, BorderLayout.NORTH);
 
         JTabbedPane tabbedPane = new JTabbedPane();
@@ -732,19 +742,16 @@ public class MainGUI extends JFrame {
         JButton btnRead = new JButton("Read Selected");
         JButton btnEdit = new JButton("Edit Selected");
         JButton btnDelete = new JButton("Delete Selected");
-        JButton btnRefresh = new JButton("Refresh");
         buttons.add(btnPublish);
         buttons.add(btnRead);
         buttons.add(btnEdit);
         buttons.add(btnDelete);
-        buttons.add(btnRefresh);
         panel.add(buttons, BorderLayout.SOUTH);
 
         btnPublish.addActionListener(e -> publishAnnouncement());
         btnRead.addActionListener(e -> readSelectedTeacherAnnouncement());
         btnEdit.addActionListener(e -> editSelectedTeacherAnnouncement());
         btnDelete.addActionListener(e -> deleteSelectedTeacherAnnouncement());
-        btnRefresh.addActionListener(e -> refreshTeacherAnnouncements());
         teacherAnnouncementCourseCombo.addActionListener(e -> refreshTeacherAnnouncements());
         return panel;
     }
@@ -993,11 +1000,16 @@ public class MainGUI extends JFrame {
         lblAdminStatus.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         topPanel.add(lblAdminStatus, BorderLayout.WEST);
 
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton btnRefresh = new JButton("Refresh");
+        btnRefresh.addActionListener(e -> refreshAdminView());
         JButton btnLogout = new JButton("Logout");
         btnLogout.addActionListener(e -> {
             cardLayout.show(mainContainer, "LoginCard");
         });
-        topPanel.add(btnLogout, BorderLayout.EAST);
+        rightPanel.add(btnRefresh);
+        rightPanel.add(btnLogout);
+        topPanel.add(rightPanel, BorderLayout.EAST);
         adminPanel.add(topPanel, BorderLayout.NORTH);
 
         // --- 控制台按鈕 ---
