@@ -19,10 +19,15 @@ public class SqliteDatabase {
         initializeTables();
     }
 
-    // 基本連線設定
     private void connect() {
         try {
             connection = DriverManager.getConnection(DB_URL);
+            
+            try (Statement stmt = connection.createStatement()) {
+                stmt.execute("PRAGMA journal_mode=WAL;"); 
+                stmt.execute("PRAGMA busy_timeout=5000;"); // 遇到別人佔用時，等待 5 秒鐘
+            }
+            
             System.out.println("Successfully connected to SQLite database!");
         } catch (SQLException e) {
             System.err.println("Database connection failed: " + e.getMessage());
@@ -47,6 +52,7 @@ public class SqliteDatabase {
             stmt.execute(SqlQueries.CREATE_ADMINS);
             stmt.execute(SqlQueries.CREATE_TEACHERS);
             stmt.execute(SqlQueries.CREATE_STUDENTS);
+            stmt.execute(SqlQueries.CREATE_SYSTEM_SETTINGS);
             stmt.execute(SqlQueries.CREATE_COURSES);
             stmt.execute(SqlQueries.CREATE_AUTH_CODES);
             stmt.execute(SqlQueries.CREATE_ANNOUNCEMENTS);
@@ -54,6 +60,7 @@ public class SqliteDatabase {
             stmt.execute(SqlQueries.CREATE_PENDING);
 
             stmt.execute(SqlQueries.INSERT_DEFAULT_ADMIN);
+            stmt.execute(SqlQueries.INSERT_DEFAULT_PHASE);
             
         } catch (SQLException e) {
             System.err.println("Table creation failed: " + e.getMessage());
@@ -206,6 +213,18 @@ public class SqliteDatabase {
             e.printStackTrace();
         }
         return null;
+    }
+
+    public String getSystemPhase() {
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.GET_SYSTEM_PHASE);
+             ResultSet rs = pstmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getString("setting_value");
+            }
+        } catch (SQLException e) {
+            System.err.println("Failed to get system phase: " + e.getMessage());
+        }
+        return "CLOSED";
     }
 
     public List<Course> getAllCourses() {
@@ -524,6 +543,15 @@ public class SqliteDatabase {
 
 
     //  更新與刪除 UPDATE & DELETE
+    public void updateSystemPhase(String phaseStr) {
+        try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.UPDATE_SYSTEM_PHASE)) {
+            pstmt.setString(1, phaseStr);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("Failed to update system phase: " + e.getMessage());
+        }
+    }
+
     public boolean updateGrade(Student student, Course course, double score) {
         try (PreparedStatement pstmt = connection.prepareStatement(SqlQueries.UPDATE_GRADE)) {
             pstmt.setDouble(1, score);
