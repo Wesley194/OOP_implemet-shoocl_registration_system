@@ -16,7 +16,6 @@ public abstract class User {
         return this.password.equals(inputPassword);
     }
 
-    // 提供使用者資料給其他物件使用。
     public String getPassword() {
         return password;
     }
@@ -30,4 +29,12 @@ public abstract class User {
     }
 
     public abstract String getRole();
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
 }

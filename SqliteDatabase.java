@@ -619,4 +619,62 @@ public class SqliteDatabase {
             return false;
         }
     }
+
+    public boolean updateUserName(User user, String newName) {
+        String query = "";
+        
+        if (user instanceof Student) {
+            query = SqlQueries.UPDATE_STUDENT_NAME;
+        } else if (user instanceof Teacher) {
+            query = SqlQueries.UPDATE_TEACHER_NAME;
+        } else if (user instanceof Admin) {
+            query = SqlQueries.UPDATE_ADMIN_NAME;
+        } else {
+            System.err.println("Unknown user role!");
+            return false;
+        }
+
+        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+            pstmt.setString(1, newName);
+            pstmt.setString(2, user.getUid());
+            
+            if (pstmt.executeUpdate() > 0) {
+                user.setName(newName);
+                return true;
+            }
+            return false;
+        } catch (SQLException e) {
+            System.err.println("Failed to update name: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean updateUserPassword(User user, String newPassword) {
+        String query = "";
+        
+        if (user instanceof Student) {
+            query = SqlQueries.UPDATE_STUDENT_PASSWORD;
+        } else if (user instanceof Teacher) {
+            query = SqlQueries.UPDATE_TEACHER_PASSWORD;
+        } else if (user instanceof Admin) {
+            query = SqlQueries.UPDATE_ADMIN_PASSWORD;
+        } else {
+            System.err.println("Unknown user role!");
+            return false;
+        }
+
+        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+            pstmt.setString(1, newPassword);
+            pstmt.setString(2, user.getUid());
+            
+            if (pstmt.executeUpdate() > 0) {
+                user.setPassword(newPassword);
+                return true;
+            }
+            return false;
+        } catch (SQLException e) {
+            System.err.println("Failed to update password: " + e.getMessage());
+            return false;
+        }
+    }
 }
