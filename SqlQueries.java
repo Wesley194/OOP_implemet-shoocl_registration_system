@@ -6,6 +6,10 @@ public class SqlQueries {
     public static final String CREATE_ADMINS = "CREATE TABLE IF NOT EXISTS admins (" +
             "uid TEXT PRIMARY KEY, name TEXT NOT NULL, password TEXT NOT NULL);";
 
+    public static final String CREATE_SYSTEM_SETTINGS = "CREATE TABLE IF NOT EXISTS system_settings (setting_key TEXT PRIMARY KEY, setting_value TEXT NOT NULL);";
+
+    public static final String INSERT_DEFAULT_PHASE = "INSERT OR IGNORE INTO system_settings (setting_key, setting_value) VALUES ('CURRENT_PHASE', 'CLOSED');";
+
     public static final String CREATE_TEACHERS = "CREATE TABLE IF NOT EXISTS teachers (" +
             "uid TEXT PRIMARY KEY, name TEXT NOT NULL, password TEXT NOT NULL);";
 
@@ -74,6 +78,8 @@ public class SqlQueries {
     
     public static final String FIND_ADMIN = "SELECT uid, name, password FROM admins WHERE uid = ?";
 
+    public static final String GET_SYSTEM_PHASE = "SELECT setting_value FROM system_settings WHERE setting_key = 'CURRENT_PHASE';";
+
     public static final String SEARCH_COURSES = "SELECT c.* FROM courses c " +
             "JOIN teachers t ON c.teacher_id = t.uid " +
             "WHERE c.course_name LIKE ? OR c.course_id LIKE ? OR t.name LIKE ?";
@@ -114,6 +120,8 @@ public class SqlQueries {
     
 
     // 更新資料 UPDATE
+    public static final String UPDATE_SYSTEM_PHASE = "UPDATE system_settings SET setting_value = ? WHERE setting_key = 'CURRENT_PHASE';";
+    
     public static final String UPDATE_GRADE = "UPDATE enrollments SET score = ? WHERE student_id = ? AND course_id = ?";
     
     public static final String UPDATE_AUTH_CODE_USED = "UPDATE auth_codes SET is_used = 1, used_by = ? WHERE code = ?";
