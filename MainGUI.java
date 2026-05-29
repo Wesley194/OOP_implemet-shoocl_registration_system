@@ -1211,6 +1211,15 @@ public class MainGUI extends JFrame {
         try {
             for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
                 if ("Nimbus".equals(info.getName())) {
+                    // 顏色調整
+                    UIManager.put("control", new Color(230, 230, 230)); // 面板底色
+                    UIManager.put("nimbusBase", new Color(150, 150, 150)); // 元件邊框、捲軸
+                    UIManager.put("nimbusBlueGrey", new Color(245, 245, 245)); // 按鈕與未選取分頁
+                    UIManager.put("nimbusLightBackground", new Color(255, 255, 255)); // 表格與輸入框
+                    UIManager.put("nimbusSelectionBackground", new Color(90, 150, 215)); // 反白選取的顏色
+                    UIManager.put("nimbusFocus", new Color(120, 180, 240)); // 點擊時的外框顏色
+                    UIManager.put("text", new Color(30, 30, 30)); // 文字顏色
+
                     UIManager.setLookAndFeel(info.getClassName());
                     break;
                 }
