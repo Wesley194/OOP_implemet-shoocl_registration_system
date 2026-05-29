@@ -121,12 +121,20 @@ public class SqlQueries {
 
     // 更新資料 UPDATE
     public static final String UPDATE_SYSTEM_PHASE = "UPDATE system_settings SET setting_value = ? WHERE setting_key = 'CURRENT_PHASE';";
-    
+
     public static final String UPDATE_GRADE = "UPDATE enrollments SET score = ? WHERE student_id = ? AND course_id = ?";
     
     public static final String UPDATE_AUTH_CODE_USED = "UPDATE auth_codes SET is_used = 1, used_by = ? WHERE code = ?";
     
     public static final String UPDATE_ANNOUNCEMENT = "UPDATE announcements SET title = ?, content = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND professor_id = ?";
+
+    public static final String UPDATE_STUDENT_NAME = "UPDATE students SET name = ? WHERE uid = ?";
+    public static final String UPDATE_TEACHER_NAME = "UPDATE teachers SET name = ? WHERE uid = ?";
+    public static final String UPDATE_ADMIN_NAME = "UPDATE admins SET name = ? WHERE uid = ?";
+
+    public static final String UPDATE_STUDENT_PASSWORD = "UPDATE students SET password = ? WHERE uid = ?";
+    public static final String UPDATE_TEACHER_PASSWORD = "UPDATE teachers SET password = ? WHERE uid = ?";
+    public static final String UPDATE_ADMIN_PASSWORD = "UPDATE admins SET password = ? WHERE uid = ?";
 
     // 刪除資料 DELETE
     public static final String DELETE_PENDING_ENROLLMENT = "DELETE FROM pending_enrollments WHERE student_id = ? AND course_id = ?";
