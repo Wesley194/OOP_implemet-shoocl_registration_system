@@ -29,6 +29,7 @@ public class MainGUI extends JFrame {
 
     // --- 需要動態更新的介面元件 ---
     private JLabel lblStudentWelcome = new JLabel();
+    private JLabel lblStudentGradesSummary = new JLabel();
     private JComboBox<String> courseComboBox;
     private JComboBox<String> teacherAnnouncementCourseCombo;
     private DefaultTableModel studentsTableModel;
@@ -356,12 +357,18 @@ public class MainGUI extends JFrame {
         myCoursesTable.getColumnModel().getColumn(5).setPreferredWidth(70);
         myGradesPanel.add(new JScrollPane(myCoursesTable), BorderLayout.CENTER);
 
+        JPanel bottomPanel = new JPanel(new BorderLayout());
+        lblStudentGradesSummary.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 0));
+        bottomPanel.add(lblStudentGradesSummary, BorderLayout.WEST);
+
         JPanel myCourseActions = new JPanel();
         JButton btnDrop = new JButton("Drop Course");
         JButton btnViewAnnouncements = new JButton("View Announcements");
         myCourseActions.add(btnDrop);
         myCourseActions.add(btnViewAnnouncements);
-        myGradesPanel.add(myCourseActions, BorderLayout.SOUTH);
+        bottomPanel.add(myCourseActions, BorderLayout.EAST);
+        
+        myGradesPanel.add(bottomPanel, BorderLayout.SOUTH);
 
         btnDrop.addActionListener(e -> {
             int row = myCoursesTable.getSelectedRow();
@@ -451,9 +458,9 @@ public class MainGUI extends JFrame {
         for (Course c : currentStudent.getMyCourses()) {
             totalCredits += c.getCredits();
         }
-        lblStudentWelcome.setText("Student: " + currentStudent.getName() + " | Total Credits: " + totalCredits
-                + " | GPA: " + system.calculateGPA(currentStudent) + " | Phase: "
+        lblStudentWelcome.setText("Student: " + currentStudent.getName() + " | Phase: "
                 + system.getPhaseName(system.getCurrentPhase()));
+        lblStudentGradesSummary.setText("Total Credits: " + totalCredits + " | GPA: " + system.calculateGPA(currentStudent));
 
         allCoursesModel.setRowCount(0);
         for (Course c : db.getAllCourses()) {
@@ -724,7 +731,7 @@ public class MainGUI extends JFrame {
         selector.add(teacherAnnouncementCourseCombo);
         panel.add(selector, BorderLayout.NORTH);
 
-        String[] cols = { "ID", "Course", "Title", "Created" };
+        String[] cols = { "ID", "Title", "Content", "Created" };
         teacherAnnouncementModel = new DefaultTableModel(cols, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -734,6 +741,11 @@ public class MainGUI extends JFrame {
         teacherAnnouncementTable = new JTable(teacherAnnouncementModel);
         teacherAnnouncementTable.setRowHeight(25);
         teacherAnnouncementTable.getTableHeader().setReorderingAllowed(false);
+        
+        teacherAnnouncementTable.getColumnModel().getColumn(0).setMinWidth(0);
+        teacherAnnouncementTable.getColumnModel().getColumn(0).setMaxWidth(0);
+        teacherAnnouncementTable.getColumnModel().getColumn(0).setWidth(0);
+        
         addAnnouncementDoubleClickHandler(teacherAnnouncementTable);
         panel.add(new JScrollPane(teacherAnnouncementTable), BorderLayout.CENTER);
 
@@ -779,7 +791,7 @@ public class MainGUI extends JFrame {
     }
 
     private void showCourseAnnouncements(Course course) {
-        String[] cols = { "ID", "Course", "Title", "Created" };
+        String[] cols = { "ID", "Title", "Content", "Created" };
         DefaultTableModel model = new DefaultTableModel(cols, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -789,6 +801,11 @@ public class MainGUI extends JFrame {
         JTable table = new JTable(model);
         table.setRowHeight(25);
         table.getTableHeader().setReorderingAllowed(false);
+        
+        table.getColumnModel().getColumn(0).setMinWidth(0);
+        table.getColumnModel().getColumn(0).setMaxWidth(0);
+        table.getColumnModel().getColumn(0).setWidth(0);
+        
         addAnnouncementDoubleClickHandler(table);
         for (Announcement a : db.getCourseAnnouncements(course.getCourseId())) {
             model.addRow(announcementRow(a));
@@ -826,8 +843,8 @@ public class MainGUI extends JFrame {
     private Object[] announcementRow(Announcement a) {
         return new Object[] {
                 a.getId(),
-                a.getCourseName() == null ? "" : a.getCourseName(),
                 a.getTitle(),
+                a.getContent(),
                 a.getCreatedAt()
         };
     }
