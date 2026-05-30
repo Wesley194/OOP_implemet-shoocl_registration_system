@@ -6,14 +6,28 @@ public class SystemStateManager {
         ADD_DROP
     }
 
-    private SystemPhase currentPhase = SystemPhase.CLOSED;
+    private SystemPhase currentPhase;
+    private SqliteDatabase database;
+
+    public SystemStateManager(SqliteDatabase database) {
+        this.database = database;
+        String phaseStr = database.getSystemPhase();
+        try {
+            this.currentPhase = SystemPhase.valueOf(phaseStr);
+        } catch (Exception e) {
+            this.currentPhase = SystemPhase.CLOSED;
+        }
+    }
 
     public void setCurrentPhase(SystemPhase phase) {
         this.currentPhase = phase;
+        this.database.updateSystemPhase(phase.name());
         System.out.println("System broadcast: The course selection phase has now switched to [" + phase + "]");
     }
 
     public SystemPhase getCurrentPhase() {
+        String phaseStr = database.getSystemPhase();
+        this.currentPhase = SystemPhase.valueOf(phaseStr);
         return this.currentPhase;
     }
 

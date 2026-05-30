@@ -13,7 +13,7 @@ public class RegistrationSystem {
     // 建立系統需要用到的 Manager。
     public RegistrationSystem(SqliteDatabase database) {
         this.database = database;
-        this.stateManager = new SystemStateManager();
+        this.stateManager = new SystemStateManager(database);
         this.courseManager = new CourseManager(database);
         this.gradeManager = new GradeManager(database);
         this.lotteryManager = new LotteryManager(database);

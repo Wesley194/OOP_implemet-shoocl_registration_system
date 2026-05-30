@@ -298,6 +298,17 @@ public class TeacherPanel extends JPanel {
         Teacher currentTeacher = controller.getCurrentTeacher();
         if (currentTeacher == null)
             return;
+
+        SqliteDatabase db = controller.getDatabase();
+        // 確保從資料庫同步最新開課狀態與學生資料
+        currentTeacher.getTeachingCourses().clear();
+        for (Course c : db.getAllCourses()) {
+            if (c.getTeacher().getUid().equals(currentTeacher.getUid())) {
+                db.hydrateCourseStudents(c);
+                currentTeacher.assignCourse(c);
+            }
+        }
+        
         lblTeacherWelcome.setText("Professor: " + currentTeacher.getName() + " | Phase: "
                 + controller.getSystem().getPhaseName(controller.getSystem().getCurrentPhase()));
         courseComboBox.removeAllItems();
@@ -447,6 +458,7 @@ public class TeacherPanel extends JPanel {
         int selectedIndex = courseComboBox.getSelectedIndex();
         if (selectedIndex >= 0 && currentTeacher != null) {
             Course selectedCourse = currentTeacher.getTeachingCourses().get(selectedIndex);
+
             List<Student> students = selectedCourse.getEnrolledStudents();
             for (Student s : students) {
                 Double currentScore = s.getCourseGrades().get(selectedCourse);

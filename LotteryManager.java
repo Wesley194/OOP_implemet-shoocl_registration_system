@@ -86,6 +86,10 @@ public class LotteryManager {
                 }
             }
             
+            for (Student s : pending) {
+                database.deletePendingEnrollment(s, course);
+            }
+
             // 抽籤完畢後清空該課程的排隊名單
             pending.clear();
         }

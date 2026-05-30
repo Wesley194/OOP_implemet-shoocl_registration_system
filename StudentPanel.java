@@ -297,6 +297,19 @@ public class StudentPanel extends JPanel {
         SqliteDatabase db = controller.getDatabase();
         RegistrationSystem system = controller.getSystem();
 
+        // 確保從資料庫同步最新選課與成績狀態
+        currentStudent.getMyCourses().clear();
+        currentStudent.getCourseGrades().clear();
+        Map<Course, Double> gradesMap = db.getStudentGradesMap(currentStudent.getUid());
+        for (Map.Entry<Course, Double> entry : gradesMap.entrySet()) {
+            Course c = entry.getKey();
+            Double score = entry.getValue();
+            currentStudent.enrollInCourse(c);
+            if (score != null) {
+                currentStudent.setGrade(c, score);
+            }
+        }
+
         int totalCredits = 0;
         for (Course c : currentStudent.getMyCourses()) {
             totalCredits += c.getCredits();
