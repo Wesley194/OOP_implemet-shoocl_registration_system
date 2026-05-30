@@ -1,9 +1,13 @@
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.Map;
+import java.util.regex.Pattern;
 public class StudentPanel extends JPanel {
     private MainFrameController controller;
     private JLabel lblStudentWelcome = new JLabel();
@@ -71,6 +75,40 @@ public class StudentPanel extends JPanel {
         allCoursesTable.getColumnModel().getColumn(2).setPreferredWidth(30);
         allCoursesTable.getColumnModel().getColumn(3).setPreferredWidth(80);
         allCoursesTable.getColumnModel().getColumn(4).setPreferredWidth(80);
+
+        TableRowSorter<DefaultTableModel> allCoursesSorter = new TableRowSorter<>(allCoursesModel);
+        allCoursesTable.setRowSorter(allCoursesSorter);
+
+        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        searchPanel.add(new JLabel("Search by:"));
+        JComboBox<String> searchTypeCombo = new JComboBox<>(new String[] { "Course ID", "Course Name", "Professor" });
+        JTextField txtCourseSearch = new JTextField(20);
+        JButton btnClearSearch = new JButton("Clear");
+        searchPanel.add(searchTypeCombo);
+        searchPanel.add(txtCourseSearch);
+        searchPanel.add(btnClearSearch);
+        enrollPanel.add(searchPanel, BorderLayout.NORTH);
+
+        Runnable updateCourseFilter = () -> applyCourseFilter(allCoursesSorter, searchTypeCombo, txtCourseSearch);
+        searchTypeCombo.addActionListener(e -> updateCourseFilter.run());
+        txtCourseSearch.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                updateCourseFilter.run();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                updateCourseFilter.run();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                updateCourseFilter.run();
+            }
+        });
+        btnClearSearch.addActionListener(e -> txtCourseSearch.setText(""));
+
         enrollPanel.add(new JScrollPane(allCoursesTable), BorderLayout.CENTER);
 
         JPanel bottomActionPanel = new JPanel();
@@ -87,7 +125,12 @@ public class StudentPanel extends JPanel {
                         JOptionPane.WARNING_MESSAGE);
                 return;
             }
-            Course selectedCourse = controller.getDatabase().getAllCourses().get(row);
+            Course selectedCourse = getSelectedAllCourse(allCoursesTable);
+            if (selectedCourse == null) {
+                JOptionPane.showMessageDialog(this, "Selected course was not found.", "Error",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
             try {
                 SystemStateManager.SystemPhase phase = controller.getSystem().getCurrentPhase();
                 if (phase == SystemStateManager.SystemPhase.PRE_ENROLL) {
@@ -113,7 +156,12 @@ public class StudentPanel extends JPanel {
                         JOptionPane.WARNING_MESSAGE);
                 return;
             }
-            Course selectedCourse = controller.getDatabase().getAllCourses().get(row);
+            Course selectedCourse = getSelectedAllCourse(allCoursesTable);
+            if (selectedCourse == null) {
+                JOptionPane.showMessageDialog(this, "Selected course was not found.", "Error",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
             String inputCode = JOptionPane.showInputDialog(this,
                     "Please enter the auth code for [" + selectedCourse.getCourseName() + "]:\n(Cancel if none)",
                     "Force Add with Auth Code", JOptionPane.QUESTION_MESSAGE);
@@ -285,6 +333,41 @@ public class StudentPanel extends JPanel {
         studentSchedulePanel.updateCourses(currentStudent.getMyCourses(), true);
     }
 
+    private void applyCourseFilter(TableRowSorter<DefaultTableModel> sorter, JComboBox<String> searchTypeCombo,
+            JTextField txtCourseSearch) {
+        String keyword = txtCourseSearch.getText().trim();
+        if (keyword.isEmpty()) {
+            sorter.setRowFilter(null);
+            return;
+        }
+
+        int column = 0;
+        String selectedType = (String) searchTypeCombo.getSelectedItem();
+        if ("Course Name".equals(selectedType)) {
+            column = 1;
+        } else if ("Professor".equals(selectedType)) {
+            column = 3;
+        }
+
+        sorter.setRowFilter(RowFilter.regexFilter("(?i)" + Pattern.quote(keyword), column));
+    }
+
+    private Course getSelectedAllCourse(JTable allCoursesTable) {
+        int viewRow = allCoursesTable.getSelectedRow();
+        if (viewRow == -1) {
+            return null;
+        }
+
+        int modelRow = allCoursesTable.convertRowIndexToModel(viewRow);
+        String courseId = (String) allCoursesModel.getValueAt(modelRow, 0);
+        for (Course course : controller.getDatabase().getAllCourses()) {
+            if (course.getCourseId().equals(courseId)) {
+                return course;
+            }
+        }
+        return null;
+    }
+
     private void showCourseAnnouncements(Course course) {
         String[] cols = { "ID", "Title", "Content", "Created" };
         DefaultTableModel model = new DefaultTableModel(cols, 0) {
@@ -375,4 +458,3 @@ public class StudentPanel extends JPanel {
         };
     }
 }
-
