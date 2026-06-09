@@ -8,9 +8,8 @@ public class LotteryManager {
         this.database = database;
     }
 
-    // ==========================================
-    // 1. 學生端：登記加選 (加入抽籤名單)
-    // ==========================================
+
+    //  學生端：登記加選 (加入抽籤名單)
     public void registerIntent(Student student, Course course) throws Exception {
         if (student.getMyCourses().contains(course)) {
             throw new Exception("Course selection failed: You have already officially enrolled in this course！");
@@ -41,9 +40,7 @@ public class LotteryManager {
         course.addPendingStudent(student);
     }
 
-    // ==========================================
-    // 2. 學生端：退選 / 取消登記
-    // ==========================================
+    // 學生端：退選 / 取消登記
     public void dropCourse(Student student, Course course) throws Exception {
         // 情況 A：如果已經正式選上 -> 執行退選
         if (student.getMyCourses().contains(course)) {
@@ -65,9 +62,7 @@ public class LotteryManager {
         }
     }
 
-    // ==========================================
-    // 3. 管理員端：執行全校大抽籤 (留給 Admin 同學去接按鈕)
-    // ==========================================
+    //  管理員端：執行全校大抽籤 (留給 Admin 同學去接按鈕)
     public void executeAllLotteries(List<Course> allCourses) {
         for (Course course : allCourses) {
             List<Student> pending = course.getPendingStudents();
